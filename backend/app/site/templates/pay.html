@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pay {{ amount }} to {{ payee }}</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23FFB000'/%3E%3C/svg%3E">
+<style>
+  /* The customer's payment page: one job, readable on any phone. Same colours as the public site. */
+  :root { --ink: #1B1F5E; --soft: #5B6088; --tint: #EEF0FA; --line: #D9DCEE; --marigold: #FFB000;
+          --marigold-deep: #E89B00; --ok: #157A4E; --ok-tint: #E6F4EC; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--tint); color: var(--ink); font: 400 17px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 440px; margin: 0 auto; padding: 24px 16px 40px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 24px 20px; text-align: center; }
+  .to { color: var(--soft); margin: 0; font-size: 15px; }
+  h1 { font-size: 22px; margin: 2px 0 14px; }
+  .amount { font-size: 44px; font-weight: 800; letter-spacing: -.02em; margin: 0; line-height: 1.1; }
+  .for { margin: 6px 0 0; color: var(--soft); }
+  .when { display: inline-block; margin-top: 12px; padding: 3px 12px; border-radius: 99px; background: var(--tint); font-size: 14px; font-weight: 600; }
+  .when.late { background: #FDECE8; color: #A3311C; }
+  .btn { display: block; width: 100%; margin-top: 20px; padding: 16px; border-radius: 10px; border: 2px solid var(--marigold);
+         background: var(--marigold); color: var(--ink); font-family: inherit; font-weight: 700; font-size: 18px;
+         line-height: 1; text-decoration: none; cursor: pointer; }
+  .btn:hover { background: var(--marigold-deep); border-color: var(--marigold-deep); }
+  .btn.quiet { background: transparent; border-color: var(--line); font-weight: 600; font-size: 16px; }
+  .apps { margin: 8px 0 0; font-size: 14px; color: var(--soft); }
+  .or { margin: 22px 0 10px; font-size: 14px; color: var(--soft); }
+  .qr svg { width: 200px; height: 200px; }
+  .upi { margin: 8px 0 0; font-size: 15px; }
+  .upi code { background: var(--tint); padding: 2px 8px; border-radius: 6px; font-size: 15px; }
+  .done { background: var(--ok-tint); border-color: #BFE3CD; }
+  .done .tick { font-size: 44px; margin: 0; }
+  .note { margin-top: 18px; font-size: 13px; color: var(--soft); text-align: center; }
+  form { margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  {% if status == "paid" %}
+  <div class="card done">
+    <p class="tick" aria-hidden="true">✅</p>
+    <h1>Paid. Thank you!</h1>
+    <p class="for">{{ amount }} for {{ purpose }}, received by {{ payee }}.</p>
+  </div>
+  {% elif status == "cancelled" %}
+  <div class="card">
+    <h1>This payment link is no longer active</h1>
+    <p class="for">Please contact {{ payee }} if you think this is a mistake.</p>
+  </div>
+  {% elif claimed %}
+  <div class="card done">
+    <p class="tick" aria-hidden="true">🙏</p>
+    <h1>Thanks! We've told {{ payee }}</h1>
+    <p class="for">They'll check their UPI app and confirm your payment of {{ amount }} for {{ purpose }}.</p>
+    <a class="btn quiet" href="{{ upi_link }}">Haven't paid yet? Pay {{ amount }}</a>
+  </div>
+  {% else %}
+  <div class="card">
+    <p class="to">Pay to</p>
+    <h1>{{ payee }}</h1>
+    <p class="amount">{{ amount }}</p>
+    <p class="for">{{ purpose }}</p>
+    {% if when %}<span class="when{% if late %} late{% endif %}">{{ when }}</span>{% endif %}
+
+    <a class="btn" href="{{ upi_link }}">Pay with any UPI app</a>
+    <p class="apps">GPay · PhonePe · Paytm · BHIM · your bank's app</p>
+
+    <p class="or">On a computer? Scan with your phone's UPI app</p>
+    <div class="qr" role="img" aria-label="UPI QR code for {{ amount }}">{{ qr | safe }}</div>
+    <p class="upi">UPI ID: <code>{{ upi_id }}</code></p>
+
+    <form method="post" action="/pay/{{ token }}/paid">
+      <button class="btn quiet" type="submit">I've paid</button>
+    </form>
+  </div>
+  {% endif %}
+  <p class="note">Your money goes directly to {{ payee }}'s own UPI account. Payment page by {{ brand }}.</p>
+</main>
+</body>
+</html>

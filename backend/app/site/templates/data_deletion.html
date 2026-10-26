@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Delete your data: {{ s.brand }}{% endblock %}
+{% block main %}
+<div class="page"><div class="wrap">
+  <h1>How to delete your data</h1>
+  <p class="updated">For {{ s.brand }} users, and for people who connected Facebook, Instagram, WhatsApp or Google to it.</p>
+  <h2>If you have a {{ s.brand }} account</h2>
+  <ol>
+    <li>Log in at {{ s.app_url }}.</li>
+    <li>Optional: Settings → <strong>Download my data</strong>, to keep a copy.</li>
+    <li>Settings → <strong>Delete account</strong>, then type your password to confirm.</li>
+  </ol>
+  <p>Your business, customers, messages, posts, photos, reviews and connected-account keys are deleted from the live service immediately, and from backups within 30 days. We keep only payment records, which tax law requires for 8 years.</p>
+  <h2>If you only want to disconnect a platform</h2>
+  <p>Settings → Connections → Disconnect. We delete that platform's keys at once. You can also remove our app from your Facebook or Instagram settings (Settings → Apps and websites) or your Google account (myaccount.google.com/permissions).</p>
+  <h2>If you are a customer of a business that uses {{ s.brand }}</h2>
+  <p>Your enquiry belongs to that business. Ask them to delete it, or write to us at {{ s.email_html | safe }} with the business's name and your phone number, and we will pass it on and help them do it within 30 days.</p>
+  <h2>Need help?</h2>
+  <p>Write to our grievance officer, {{ s.grievance_html | safe }}.</p>
+</div></div>
+{% endblock %}

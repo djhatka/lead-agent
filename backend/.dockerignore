@@ -1,0 +1,8 @@
+# Things that must NOT go into the live server's box
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+data/
+tests/

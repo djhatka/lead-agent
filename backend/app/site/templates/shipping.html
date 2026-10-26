@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Shipping and delivery policy: {{ s.brand }}{% endblock %}
+{% block main %}
+<div class="page"><div class="wrap">
+  <h1>Shipping and delivery policy</h1>
+  <p class="updated">Last updated {{ s.updated }}</p>
+  <p>{{ s.brand }} is an online software service. Nothing physical is shipped.</p>
+  <ul>
+    <li><strong>How it is delivered:</strong> you use the service in your web browser at {{ s.app_url }} on a phone or computer.</li>
+    <li><strong>When:</strong> your account works immediately after sign-up. A paid plan is active within a few minutes of a successful payment; you get an email receipt.</li>
+    <li><strong>Where:</strong> anywhere with an internet connection. The service is offered to businesses in India.</li>
+    <li><strong>Problems:</strong> if your plan is not active within 2 hours of paying, write to {{ s.email_html | safe }} with your payment ID and we will fix it the same working day.</li>
+  </ul>
+</div></div>
+{% endblock %}

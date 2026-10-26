@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Cancellation and refund policy: {{ s.brand }}{% endblock %}
+{% block main %}
+<div class="page"><div class="wrap">
+  <h1>Cancellation and refund policy</h1>
+  <p class="updated">Last updated {{ s.updated }}</p>
+  <h2>Try before you pay</h2>
+  <p>Every business starts with a {{ s.trial_days }}-day free trial with all {{ s.trial_name }} features and no card needed, so you can decide before paying anything.</p>
+  <h2>Cancelling</h2>
+  <ul>
+    <li>Cancel any time from Billing in your dashboard, or by writing to {{ s.email_html | safe }}.</li>
+    <li>Your plan stops renewing straight away, and you keep full access until the end of the month you have already paid for.</li>
+    <li>There are no cancellation fees.</li>
+  </ul>
+  <h2>Refunds</h2>
+  <ul>
+    <li>Because you can try everything free first, monthly payments are not refunded for partly used months.</li>
+    <li><strong>We do refund</strong>: payments taken by mistake (for example a double charge, or a renewal after you cancelled), and the unused part of a month if we remove a major feature you paid for or the service is unavailable for more than 3 days in a row because of our fault.</li>
+    <li>To ask for a refund, write to {{ s.email_html | safe }} within 30 days of the payment, with the payment ID from your receipt.</li>
+    <li>Approved refunds are sent back to the original payment method (card, UPI or bank) through Razorpay within 5–7 working days. Your bank may take a few more days to show it.</li>
+  </ul>
+  <h2>Changing plans</h2>
+  <p>You can move to another plan any time. The new plan starts when you pay for it, and your old plan stops renewing.</p>
+  <h2>Questions</h2>
+  <p>{{ s.company }}, {{ s.address_html | safe }}. Email {{ s.email_html | safe }}, phone {{ s.phone_html | safe }}.</p>
+</div></div>
+{% endblock %}

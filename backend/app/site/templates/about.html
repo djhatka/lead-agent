@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}About us: {{ s.brand }}{% endblock %}
+{% block main %}
+<div class="page"><div class="wrap">
+  <h1>About {{ s.brand }}</h1>
+  <p class="updated">An online service by {{ s.company }}, {{ s.legal_city }}, India.</p>
+  <p>Small businesses lose customers in the gaps: a WhatsApp message seen at 11 pm and forgotten, a Justdial enquiry buried in email, an Instagram DM nobody answered. Big companies have sales teams and marketing agencies for this. A gym, a clinic or a salon usually has the owner and a phone.</p>
+  <p>{{ s.brand }} is a subscription website that does that follow-up work for them. It collects enquiries from every platform into one inbox, uses AI to show who is ready to buy, plans and writes social media posts, helps with Google reviews, and sends the owner a short weekly plan. The owner stays in charge: nothing is posted or sent without their approval.</p>
+  <h2>What we offer</h2>
+  <ul>
+    <li>A monthly software subscription (Starter, Growth and Pro plans) used through a web browser on phone or computer. See <a href="/pricing">pricing</a>.</li>
+    <li>A {{ s.trial_days }}-day free trial, with no card needed.</li>
+    <li>Support by email{% if s.phone %} and phone{% endif %}.</li>
+  </ul>
+  <h2>Who we are</h2>
+  <p>{{ s.brand }} is run by {{ s.company }}{% if s.address %}, {{ s.address }}{% endif %}. Write to us at {{ s.email_html | safe }} or use the <a href="/contact">contact form</a>.</p>
+</div></div>
+{% endblock %}

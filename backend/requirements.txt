@@ -1,0 +1,32 @@
+# --- Web server ---
+fastapi>=0.115            # The "receptionist": turns Python functions into web endpoints
+uvicorn[standard]>=0.30   # The engine that actually runs FastAPI and listens for requests
+
+# --- Data & settings ---
+sqlalchemy>=2.0           # Lets Python talk to the database using classes instead of raw SQL
+psycopg[binary]>=3.2      # The PostgreSQL driver (the live website's database)
+alembic>=1.13             # Migrations: safe, numbered changes to the database tables
+pydantic>=2.7             # Checks that incoming/outgoing data has the right shape
+pydantic-settings>=2.3    # Reads settings from the .env file into a Python object
+
+# --- Security ---
+cryptography>=43          # Locks each business's platform keys (tokens) before saving them
+
+# --- Photos and videos ---
+python-multipart>=0.0.9   # Lets the server receive uploaded files
+pillow>=10.4              # Cleans photos: converts to JPEG, fixes rotation, removes hidden location data
+
+# --- Importing customer lists ---
+openpyxl>=3.1             # Reads Excel (.xlsx) files
+
+# --- Public website ---
+jinja2>=3.1               # Fills in the public pages (home, pricing, terms, privacy...)
+segno>=1.6                # Draws the UPI QR code on customers' payment pages (Task 31)
+
+# --- AI ---
+langgraph>=0.2            # Draws the flowchart that connects our AI agents
+anthropic>=0.40           # Official SDK for talking to Claude (only used when mock mode is off)
+
+# --- Testing ---
+pytest>=8.0               # Runs our automatic checks
+httpx>=0.27               # Calls Meta/Google/Razorpay, and lets tests call our API like a browser

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Pricing: {{ s.brand }}{% endblock %}
+{% block description %}{{ s.brand }} plans from ₹{{ "{:,}".format(s.cheapest) }} a month. {{ s.trial_days }}-day free trial, no card needed, cancel any time.{% endblock %}
+{% block main %}
+<section class="block">
+  <div class="wrap">
+    <h2>Pricing</h2>
+    <p class="intro">One business, one monthly price. Every plan includes the enquiry inbox from every platform, AI lead scoring with hot alerts, AI-written posts and review replies. Start with a {{ s.trial_days }}-day free trial of {{ s.trial_name }}; no card needed.</p>
+    {% include "_plans.html" %}
+  </div>
+</section>
+<section class="block tinted">
+  <div class="wrap">
+    <h2>What's included</h2>
+    <div class="page" style="padding:0"><div class="wrap" style="padding:0;max-width:none">
+    <table>
+      <thead><tr><th></th>{% for p in s.plans %}<th>{{ p.name }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        <tr><td>Price per month</td>{% for p in s.plans %}<td>₹{{ "{:,}".format(p.price) }}</td>{% endfor %}</tr>
+        <tr><td>Enquiry inbox (WhatsApp, Instagram, Facebook, Justdial, Google, website…)</td>{% for p in s.plans %}<td>✓</td>{% endfor %}</tr>
+        <tr><td>AI lead scoring and hot-lead alerts</td>{% for p in s.plans %}<td>✓</td>{% endfor %}</tr>
+        <tr><td>AI-planned and written posts, scheduling</td>{% for p in s.plans %}<td>✓</td>{% endfor %}</tr>
+        <tr><td>AI-drafted replies to reviews</td>{% for p in s.plans %}<td>✓</td>{% endfor %}</tr>
+        <tr><td>Weekly AI growth review (every Monday)</td>{% for p in s.plans %}<td>{{ "✓" if p.weekly_review else "–" }}</td>{% endfor %}</tr>
+        <tr><td>Automatic "please review us" WhatsApps</td>{% for p in s.plans %}<td>{{ "✓" if p.review_requests else "–" }}</td>{% endfor %}</tr>
+        <tr><td>Staff logins</td>{% for p in s.plans %}<td>{{ p.staff_seats }}</td>{% endfor %}</tr>
+        <tr><td>Social accounts</td>{% for p in s.plans %}<td>{{ p.social_accounts }}</td>{% endfor %}</tr>
+        <tr><td>Photo and video storage</td>{% for p in s.plans %}<td>{{ p.storage_mb // 1024 }} GB</td>{% endfor %}</tr>
+      </tbody>
+    </table>
+    </div></div>
+    <p class="pricing-notes">Payments are taken by Razorpay. Applicable taxes, if any, are shown at checkout and on your receipt. Change or cancel your plan any time from Billing.</p>
+  </div>
+</section>
+{% endblock %}

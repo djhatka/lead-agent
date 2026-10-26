@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Terms and conditions: {{ s.brand }}{% endblock %}
+{% block main %}
+<div class="page"><div class="wrap">
+  <h1>Terms and conditions</h1>
+  <p class="updated">Last updated {{ s.updated }}</p>
+  <p>These terms are an agreement between you (the business using the service) and {{ s.company }} ("we", "us"), which runs {{ s.brand }} at {{ s.site_url }}. By creating an account or using the service you agree to them. If you use it for a company, you confirm you may accept these terms for that company.</p>
+
+  <h2>1. The service</h2>
+  <p>{{ s.brand }} is an online software subscription for businesses. It collects customer enquiries from connected platforms into one inbox, uses artificial intelligence (AI) to score enquiries and draft posts, replies and reports, schedules social media posts you approve, and helps manage reviews. Features depend on your plan, shown on the <a href="/pricing">pricing page</a>.</p>
+
+  <h2>2. Your account</h2>
+  <ul>
+    <li>You must be at least 18 years old and give correct business details.</li>
+    <li>Keep your password private. You are responsible for what happens under your account and your staff's logins.</li>
+    <li>Tell us at once at {{ s.email_html | safe }} if you think someone else has used your account.</li>
+  </ul>
+
+  <h2>3. Free trial, plans and payment</h2>
+  <ul>
+    <li>New businesses get a {{ s.trial_days }}-day free trial. No card is needed. When it ends, the dashboard pauses until you choose a plan; enquiries keep being saved.</li>
+    <li>Plans are billed monthly in Indian Rupees through Razorpay and renew automatically until cancelled. Applicable taxes are shown at checkout.</li>
+    <li>If a renewal payment fails we will tell you, and the service continues for {{ s.grace_days }} days while you update your payment.</li>
+    <li>We may change prices with at least 30 days' notice by email. The new price applies from your next billing month.</li>
+    <li>Cancellations and refunds are covered by our <a href="/refunds">cancellation and refund policy</a>.</li>
+  </ul>
+
+  <h2>4. Your data and your customers' data</h2>
+  <p>You own your business data and the data of your customers that you bring into the service (for example names, phone numbers and messages from enquiries). You decide why and how it is used; we process it on your behalf to provide the service, as described in our <a href="/privacy">privacy policy</a>. You confirm you have the right to collect and use your customers' data this way, including any consent the law requires, and that you will answer your customers' requests about their data. You can export or delete your data at any time from your account.</p>
+
+  <h2>5. Connected platforms and messaging</h2>
+  <ul>
+    <li>When you connect WhatsApp, Instagram, Facebook, Google or other platforms, you also follow their own terms and policies (for example the WhatsApp Business Messaging Policy). We are not responsible for changes or outages on those platforms, or for actions they take on your accounts.</li>
+    <li>Only message people who contacted you or agreed to hear from you. Do not use the service for spam, bulk unsolicited messages or anything illegal.</li>
+  </ul>
+
+  <h2>6. AI-generated content</h2>
+  <p>AI drafts (posts, replies, scores, reports) can be wrong or unsuitable. They are suggestions: you review and approve them before anything is published or sent, and you are responsible for content you approve. Lead scores and growth advice are estimates, not guarantees of sales or results.</p>
+
+  <h2>7. Acceptable use</h2>
+  <p>You must not: break any law; upload content you have no right to use or that is false, hateful, obscene or harmful; try to access other businesses' data; attack, overload or reverse-engineer the service; or resell it without our written permission. We may suspend accounts that do, after notice where reasonable.</p>
+
+  <h2>8. Availability and changes</h2>
+  <p>We work to keep the service running and your data safe, with daily backups, but we do not promise it will never be interrupted. We may improve or change features; if we remove a major paid feature, you may cancel and get a pro-rated refund for the unused part of the month.</p>
+
+  <h2>9. Ending the service</h2>
+  <p>You can cancel any time from Billing, and delete your account from Settings. We may end the service for you if you seriously break these terms or do not pay, after notice. After an account is deleted your data is removed as described in the privacy policy.</p>
+
+  <h2>10. Liability</h2>
+  <p>To the extent the law allows, we are not liable for indirect or consequential losses (such as lost profits or lost customers), and our total liability for any claim is limited to the fees you paid us in the three months before the claim. Nothing in these terms limits liability that cannot be limited by law.</p>
+
+  <h2>11. Law, disputes and grievances</h2>
+  <p>These terms are governed by the laws of India. Courts at {{ s.legal_city }} have jurisdiction. For any complaint, write to our grievance officer, {{ s.grievance_html | safe }}; we acknowledge within 48 hours and resolve within 30 days.</p>
+
+  <h2>12. Changes to these terms</h2>
+  <p>We may update these terms. For important changes we will email account owners at least 15 days before they apply. The date at the top shows the latest version.</p>
+
+  <h2>Contact</h2>
+  <p>{{ s.company }}, {{ s.address_html | safe }}. Email {{ s.email_html | safe }}.</p>
+</div></div>
+{% endblock %}

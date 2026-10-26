@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}{{ s.brand }}: never lose a customer in your phone again{% endblock %}
+{% block head %}
+<script type="application/ld+json">{{ s.schema_json | safe }}</script>
+{% endblock %}
+{% block main %}
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <h1>Stop losing customers in your phone.</h1>
+      <p class="lead">Every enquiry from WhatsApp, Instagram, Justdial and Google lands in one inbox. The AI tells you who is ready to buy, writes your posts, and sends you three things to do every Monday.</p>
+      <div class="actions">
+        <a class="btn" href="{{ s.signup_url }}">Start your {{ s.trial_days }}-day free trial</a>
+        <a class="btn quiet" href="/pricing">See prices</a>
+      </div>
+      <p class="fine">No card needed for the trial. Plans from ₹{{ "{:,}".format(s.cheapest) }} a month.</p>
+    </div>
+    <div class="phone" aria-label="Example: enquiries arriving in the inbox, each scored by the AI">
+      <div class="screen">
+        <div class="screen-head"><b>Enquiries</b><small>today</small></div>
+        <div class="msg hot">
+          <span class="who">Ravi Kumar</span><span class="score">86<small>score</small></span>
+          <span class="from">WhatsApp · 7:42 pm</span>
+          <span class="said">Bhaiya monthly fees kitni hai? Kal se join karna hai</span>
+          <span class="tag">🔥 Hot: reply in the next 10 minutes</span>
+        </div>
+        <div class="msg">
+          <span class="who">Sunita Rao</span><span class="score">71<small>score</small></span>
+          <span class="from">Justdial · 7:15 pm</span>
+          <span class="said">Looking for: Zumba classes, Tilak Nagar</span>
+        </div>
+        <div class="msg">
+          <span class="who">@priya.fit</span><span class="score">58<small>score</small></span>
+          <span class="from">Instagram · 6:50 pm</span>
+          <span class="said">Saw your transformation reel 😍 do you have a ladies batch?</span>
+        </div>
+        <div class="msg">
+          <span class="who">Arjun M.</span><span class="score">★5<small>review</small></span>
+          <span class="from">Google review · 6:02 pm</span>
+          <span class="said">Clean gym, great trainers. Reply drafted for you.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="band">
+  <div class="wrap"><p>Works with WhatsApp, Instagram, Facebook, Google, Justdial, Sulekha, Practo, IndiaMART <span>and your own website, in one place.</span></p></div>
+</div>
+
+<section class="block">
+  <div class="wrap">
+    <h2>Four jobs it takes off your hands</h2>
+    <p class="intro">You run the business. {{ s.brand }} does the follow-up work that usually gets left for later, and shows you why it suggests each thing.</p>
+
+    <div class="job">
+      <div>
+        <h3>It sorts every enquiry by who is ready to buy</h3>
+        <p>Each message gets a score from 1 to 100 and a reason you can read. Hot leads come with an alert, so the person who asked for the price tonight hears back tonight, not tomorrow.</p>
+      </div>
+      <div class="example" aria-label="Example score breakdown">
+        <div class="row"><span>Asked for the price</span><span class="plus">+20</span></div>
+        <div class="row"><span>Wants to start tomorrow</span><span class="plus">+18</span></div>
+        <div class="row"><span>Came from WhatsApp</span><span class="plus">+15</span></div>
+        <div class="row"><span>No name shared yet</span><span class="minus">−5</span></div>
+        <div class="row total"><span>Ravi Kumar</span><span>86 · hot</span></div>
+      </div>
+    </div>
+
+    <div class="job">
+      <div>
+        <h3>It plans and writes your social media</h3>
+        <p>A week of posts for Instagram, Facebook and Google, written in your style, timed for festivals, and based on what actually brought you customers before. Nothing goes out until you approve it.</p>
+      </div>
+      <div class="example">
+        <div class="draft">Draft for Friday, 7:30 pm · Instagram reel</div>
+        <div class="caption">Diwali special! 🪔 Join before 1 November and get your first month at ₹1,499.
+Trainers who actually check your form, AC floor, open 6 am to 11 pm.
+📲 WhatsApp us to book your free trial.</div>
+      </div>
+    </div>
+
+    <div class="job">
+      <div>
+        <h3>Every Monday, it tells you three things to do</h3>
+        <p>A short review of the week: where your customers came from, what made money, and what is missing from your Google and Instagram profiles. Plain words, ready to read on WhatsApp.</p>
+      </div>
+      <div class="example">
+        <ol>
+          <li>Reply faster after 8 pm: 6 enquiries waited more than 2 hours.</li>
+          <li>Post one more before/after reel: they brought 9 of your 14 enquiries.</li>
+          <li>Ask last week's 5 new members for a Google review.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="job">
+      <div>
+        <h3>It helps you look after your reviews</h3>
+        <p>New Google reviews arrive with a reply already drafted, and unhappy ones are flagged first. After a sale, a polite WhatsApp asks happy customers to review you.</p>
+      </div>
+      <div class="example">
+        <div class="draft">★★☆☆☆ "Waited 20 minutes for a trainer."</div>
+        <div class="caption">Sorry about the wait, Rahul. We've added a second trainer for the evening rush. Please ask for Amit next time, or call us on the number below and we'll make it right.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block tinted">
+  <div class="wrap">
+    <h2>Up and running in ten minutes</h2>
+    <p class="intro">No setup fee, no training needed. If you can use WhatsApp, you can use this.</p>
+    <ol class="steps">
+      <li><h3>Sign up</h3><p>Tell us your business name, what you sell and your area. Your {{ s.trial_days }}-day trial starts straight away.</p></li>
+      <li><h3>Connect your accounts</h3><p>Link WhatsApp, Instagram and Google with a click, and forward your Justdial or Practo lead emails to your own private address.</p></li>
+      <li><h3>Plan your week</h3><p>Tap "Plan my week". Check the drafts, change anything you like, and approve. Enquiries start arriving in one inbox.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap">
+    <h2>Made for local businesses</h2>
+    <p class="industries">Gyms and fitness studios, dental and skin clinics, salons, car detailing and service centres, coaching classes, cafés and restaurants <span>and any business where customers ask first and buy later.</span></p>
+  </div>
+</section>
+
+<section class="block tinted" id="pricing">
+  <div class="wrap">
+    <h2>Simple monthly prices</h2>
+    <p class="intro">Every plan includes the inbox, AI scoring and AI-written posts. Cancel any time.</p>
+    {% include "_plans.html" %}
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap">
+    <h2>Questions owners ask</h2>
+    <div class="faq">
+      {% for q, a in s.faq %}
+      <details><summary>{{ q }}</summary><p>{{ a }}</p></details>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="closing">
+  <div class="wrap">
+    <h2>Answer every customer this week.</h2>
+    <p>Try everything free for {{ s.trial_days }} days, then decide. No card needed to start.</p>
+    <a class="btn" href="{{ s.signup_url }}">Start your free trial</a>
+  </div>
+</section>
+{% endblock %}
