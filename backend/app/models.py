@@ -30,6 +30,7 @@ SQLAlchemy reads these classes and creates the real tables in leads.db.
     renewals        memberships/services about to expire, so the owner can offer a renewal
     competitors     3-5 nearby rivals the owner watches (rating, reviews, activity)
     competitor_alerts  one "they moved" note per noticed change
+    bookings        booking slots inside WhatsApp: a shareable link, a time picked, no back-and-forth
 
 How they connect:
 
@@ -155,6 +156,9 @@ class Business(Base):
     renewal_settings: Mapped[Optional[dict]] = mapped_column(JSON)
     # Fill your empty hours (Task 33): {"enabled": true, "min_days_since_won": 30}
     slow_hours_settings: Mapped[Optional[dict]] = mapped_column(JSON)
+    # Booking slots (Task 37): when customers can book, and how long each slot is
+    #   {"slot_minutes": 30, "days_ahead": 7, "start_hour": 10, "end_hour": 19, "closed_weekdays": [6]}
+    booking_settings: Mapped[Optional[dict]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     # Links to this business's rows in other tables.
@@ -572,6 +576,37 @@ class CompetitorAlert(Base):
     kind: Mapped[str] = mapped_column(String(20))                         # new_reviews / rating_up / rating_down
     message: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+
+
+BOOKING_STATUSES = ("pending", "confirmed", "cancelled")
+
+
+class Booking(Base):
+    """A booking slot inside WhatsApp (Task 37): the owner sends a link, the customer
+    picks a free time from the business's own working hours, no back-and-forth needed.
+
+    Same shape as Due/payments: a shareable page at /book/<token> is the only key.
+    Status flow: pending (link sent, no slot chosen yet) → confirmed (customer picked
+    a time) or cancelled (owner cancelled it, or the customer never picked one)."""
+
+    __tablename__ = "bookings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    business_id: Mapped[int] = mapped_column(ForeignKey("businesses.id", ondelete="CASCADE"), index=True)
+    # The enquiry it belongs to, if any (a walk-in booking may have none)
+    lead_id: Mapped[Optional[int]] = mapped_column(ForeignKey("leads.id", ondelete="SET NULL"), index=True)
+    customer_name: Mapped[str] = mapped_column(String(100))
+    phone: Mapped[Optional[str]] = mapped_column(String(20))
+    service: Mapped[str] = mapped_column(String(150))                     # "Personal training session"
+    # pending → confirmed / cancelled
+    status: Mapped[str] = mapped_column(String(12), default="pending", index=True)
+    # The secret part of the booking page address: /book/<token>
+    token: Mapped[str] = mapped_column(String(32), unique=True)
+    slot_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), index=True)  # set once chosen
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=30, server_default="30")    # a snapshot at creation
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class User(Base):

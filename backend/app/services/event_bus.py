@@ -50,6 +50,7 @@ EVENT_TYPES = {
     "connection.problem": "A connected account (WhatsApp/Instagram/Facebook/Google) needs reconnecting",
     "renewal.due": "Renewals are coming up: memberships or services expiring soon",
     "competitor.moved": "A watched competitor's rating or reviews moved",
+    "booking.confirmed": "A customer picked a time slot for their booking",
     "test": "A test event",
 }
 

@@ -137,6 +137,7 @@ Check with http://127.0.0.1:8000/ai/status. Until then, every agent runs in free
 | **Fill your empty hours** | Offer agent writes a friendly invite for a slow time slot; plain code finds the slow hours and which past customers to invite | Owner opens "Fill your empty hours" |
 | **Local SEO checklist** | No AI: a plain-code checklist (profile completeness, Google connection, posts, reviews, reply rate), each item explaining why it affects ranking and how to fix it | Owner opens "SEO checklist" |
 | **Competitor watch** | No AI: 3-5 nearby rivals' rating and review count, re-checked weekly; an alert (here and on the live feed) when one moves | A watched competitor's rating or review count changes enough to matter |
+| **Booking slots** | No AI: a shareable booking-link page (like the Payments page) where the customer picks a free time slot themselves, inside the business's own working hours | "Request booking" in an enquiry, or "New booking" on the Bookings page |
 
 Rule everywhere: **plain code calculates the numbers, the AI only explains them**, and **nothing is posted or sent without the owner**.
 (The instant first reply is off until the owner turns it on and can preview it first; it never mentions prices,
@@ -169,6 +170,7 @@ Publish scheduled posts · refresh post numbers · send "please review us" Whats
 | Fill your empty hours | `/slow-hours`, `/slow-hours/settings` (GET, PUT), `/slow-hours/{lead_id}`, `/slow-hours/{lead_id}/send`, `/skip` |
 | Local SEO checklist | `GET /seo?business_id=1` (score + the checklist) |
 | Competitor watch | `/competitors` (GET, POST), `/competitors/{id}` (DELETE), `/competitors/{id}/check`, `/competitors/alerts` |
+| Booking slots | `/bookings` (GET, POST), `/bookings/settings` (GET, PUT), `/bookings/{id}`, `/bookings/{id}/slots`, `/bookings/{id}/send`, `/cancel`; customer page `/book/{token}` |
 | Follow-up reminders | `/followups`, `/followups/settings` (GET, PUT), `/followups/{lead_id}`, `/followups/{lead_id}/send`, `/snooze`, `/stop`, `/resume` |
 | Monthly results | `/roi`, `/roi/reports`, `/roi/reports/{id}`, `/roi/reports/{id}/whatsapp`, `POST /roi/reports` |
 | Reputation | `/reviews`, `/reviews/summary`, `/reviews/draft-all`, `/reviews/{id}/reply`, `/review-requests` |
@@ -201,7 +203,7 @@ backend/app/
                      email_leads (reads Justdial/Sulekha/Practo lead emails), lead_import (Excel/CSV),
                      account_service (export / delete my data), launch_check (go-live checklist),
                      followup_service, dues_service, renewal_service, slow_hours_service, seo_checklist,
-                     competitor_service
+                     competitor_service, booking_service
   agents/            llm.py (AI connector + mock mode), lead_graph.py, growth_graph.py, state.py
   agents/nodes/      one file per agent
 backend/seed/        demo data, traffic simulator, create_admin, restore_backup
@@ -261,7 +263,14 @@ backend/tests/       440 automatic checks
       the live feed when a competitor's rating or review count moves enough to matter. No AI — real numbers
       need a paid map-search data service (DATAFORSEO_LOGIN/PASSWORD in .env, ~$0.0006–$0.002 a search, no
       approval needed); until then it runs free in mock mode with realistic, slowly-drifting pretend numbers
-- [ ] Tasks 36–40: see the "Lead Intel: Roadmap, Go-Live and Approvals" guide
+- [x] Task 37: booking slots inside WhatsApp (Bookings page, Settings → Bookings for working hours/slot length):
+      the owner creates a booking for a customer and sends them a link, just like "Request payment"; the
+      customer opens it and picks a free time slot themselves from the business's own working hours — no
+      back-and-forth, no double-booking (a slot taken by a confirmed booking never shows up again). No AI:
+      plain code builds the slot list and checks for clashes
+- [ ] Task 36: "you vs similar businesses" — skipped for now (the roadmap itself says it needs ~20 businesses
+      of the same type on the platform to be meaningful; revisit once there's real data)
+- [ ] Tasks 38–40: see the "Lead Intel: Roadmap, Go-Live and Approvals" guide
 
 ## Next (Part C: the business side)
 - Your domain, real accounts (Razorpay, email, Meta, Google), and the frontend: see DEPLOY.md

@@ -45,7 +45,8 @@ def test_running_migrations_twice_changes_nothing(empty_database):
 
 
 def test_old_laptop_database_is_brought_up_to_date(empty_database):
-    added_later = {"roi_reports", "owner_alerts", "dues", "renewals", "competitors", "competitor_alerts"} # tables from migrations 0002+
+    added_later = {"roi_reports", "owner_alerts", "dues", "renewals", "competitors", "competitor_alerts",
+                   "bookings"} # tables from migrations 0002+
     with empty_database.begin() as connection:          # made before migrations existed: the 0001 tables
         for table in Base.metadata.sorted_tables:
             if table.name not in added_later:
@@ -64,10 +65,11 @@ def test_old_laptop_database_is_brought_up_to_date(empty_database):
         connection.exec_driver_sql("ALTER TABLE businesses DROP COLUMN renewal_settings")
         connection.exec_driver_sql("ALTER TABLE businesses DROP COLUMN slow_hours_settings")
         connection.exec_driver_sql("ALTER TABLE leads DROP COLUMN last_slow_offer_at")
+        connection.exec_driver_sql("ALTER TABLE businesses DROP COLUMN booking_settings")
     database.migrate()
     with empty_database.connect() as connection:
         version = connection.exec_driver_sql("select version_num from alembic_version").scalar()
-    assert version == "3c7f1a9e2b4d" and added_later <= set(inspect(empty_database).get_table_names())
+    assert version == "7d2e4c8a1f6b" and added_later <= set(inspect(empty_database).get_table_names())
     assert "won_at" in {c["name"] for c in inspect(empty_database).get_columns("leads")}
     assert "alert_phone" in {c["name"] for c in inspect(empty_database).get_columns("businesses")}
     assert "auto_reply" in {c["name"] for c in inspect(empty_database).get_columns("messages")}

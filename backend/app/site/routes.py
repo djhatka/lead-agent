@@ -5,6 +5,7 @@ The public website (no login): served as plain, fast HTML pages.
     /about       about us          /contact     contact details + form
     /terms  /privacy  /refunds  /shipping  /data-deletion     the legal pages
     /pay/<token>                   a customer's payment page (Task 31): pays the owner's UPI ID directly
+    /book/<token>                  a customer's booking page (Task 37): picks a free time slot
     /robots.txt  /sitemap.xml      for Google
     /static/...                    the stylesheet
 
@@ -17,6 +18,7 @@ import json
 import re
 import time
 from collections import defaultdict
+from datetime import datetime
 from html import escape
 from pathlib import Path
 
@@ -30,9 +32,9 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models import Business, ContactMessage, Due
+from app.models import Booking, Business, ContactMessage, Due
 from app.plans import PLANS, TRIAL_PLAN
-from app.services import dues_service, email_service
+from app.services import booking_service, dues_service, email_service
 
 HERE = Path(__file__).parent
 STATIC_DIR = HERE / "static"
@@ -217,11 +219,57 @@ def pay_claimed(token: str, db: Session = Depends(get_db)):
     return RedirectResponse(f"/pay/{token}", status_code=303)
 
 
+# ---------------------------------------------------------------------------
+# A customer's booking page (Task 37). Same idea as /pay/<token>: the token in
+# the address is the only key, long and random, so nobody can guess another
+# customer's page.
+# ---------------------------------------------------------------------------
+def _booking_page(request: Request, db: Session, token: str):
+    booking = db.scalar(select(Booking).where(Booking.token == token)) if len(token) <= 32 else None
+    if booking is None:
+        return pages.TemplateResponse(request, "booking_missing.html", {"brand": settings.app_name}, status_code=404,
+                                      headers={"Cache-Control": "no-store"})
+    business = db.get(Business, booking.business_id)
+    slots = []
+    if booking.status == "pending":
+        by_day: dict[str, list[dict]] = {}
+        for slot in booking_service.available_slots(db, business, booking):
+            local = slot.astimezone(booking_service.IST)
+            day_label = f"{booking_service.DAYS[local.weekday()]} {local.day} {booking_service.MONTHS[local.month - 1]}"
+            hour12 = local.hour % 12 or 12
+            time_label = f"{hour12}:{local.minute:02d} {'AM' if local.hour < 12 else 'PM'}"
+            by_day.setdefault(day_label, []).append({"iso": slot.isoformat(), "label": time_label})
+        slots = [{"day": day, "times": times} for day, times in by_day.items()]
+    return pages.TemplateResponse(request, "booking.html", {
+        "brand": settings.app_name, "business": business.name, "service": booking.service,
+        "status": booking.status, "slot_label": booking_service.say_when(booking_service._utc(booking.slot_at))
+        if booking.slot_at else "", "slots": slots, "token": booking.token,
+    }, headers={"Cache-Control": "no-store"})
+
+
+@router.get("/book/{token}")
+def booking_page(token: str, request: Request, db: Session = Depends(get_db)):
+    return _booking_page(request, db, token)
+
+
+@router.post("/book/{token}/choose")
+def booking_choose(token: str, slot: str = Form(...), db: Session = Depends(get_db)):
+    """The customer tapped a time: confirm it (someone else may have just taken it)."""
+    booking = db.scalar(select(Booking).where(Booking.token == token)) if len(token) <= 32 else None
+    if booking is not None and booking.status == "pending":
+        business = db.get(Business, booking.business_id)
+        try:
+            booking_service.choose_slot(db, business, booking, datetime.fromisoformat(slot))
+        except (ValueError, TypeError):
+            pass    # someone else took it, or the request was malformed: just show the page again
+    return RedirectResponse(f"/book/{token}", status_code=303)
+
+
 @router.get("/robots.txt")
 def robots():
     site = (settings.site_url or settings.public_api_url).rstrip("/")
     return PlainTextResponse(f"User-agent: *\nAllow: /\nDisallow: /webhooks/\nDisallow: /files/\nDisallow: /pay/\n"
-                             f"Sitemap: {site}/sitemap.xml\n")
+                             f"Disallow: /book/\nSitemap: {site}/sitemap.xml\n")
 
 
 @router.get("/sitemap.xml")
