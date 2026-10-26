@@ -45,7 +45,7 @@ def test_running_migrations_twice_changes_nothing(empty_database):
 
 
 def test_old_laptop_database_is_brought_up_to_date(empty_database):
-    added_later = {"roi_reports", "owner_alerts", "dues", "renewals"} # tables from migrations 0002+
+    added_later = {"roi_reports", "owner_alerts", "dues", "renewals", "competitors", "competitor_alerts"} # tables from migrations 0002+
     with empty_database.begin() as connection:          # made before migrations existed: the 0001 tables
         for table in Base.metadata.sorted_tables:
             if table.name not in added_later:
@@ -67,7 +67,7 @@ def test_old_laptop_database_is_brought_up_to_date(empty_database):
     database.migrate()
     with empty_database.connect() as connection:
         version = connection.exec_driver_sql("select version_num from alembic_version").scalar()
-    assert version == "1fa9e753c1f6" and added_later <= set(inspect(empty_database).get_table_names())
+    assert version == "3c7f1a9e2b4d" and added_later <= set(inspect(empty_database).get_table_names())
     assert "won_at" in {c["name"] for c in inspect(empty_database).get_columns("leads")}
     assert "alert_phone" in {c["name"] for c in inspect(empty_database).get_columns("businesses")}
     assert "auto_reply" in {c["name"] for c in inspect(empty_database).get_columns("messages")}

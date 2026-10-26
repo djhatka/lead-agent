@@ -28,6 +28,8 @@ SQLAlchemy reads these classes and creates the real tables in leads.db.
     roi_reports     the monthly "what Lead Intel did for you" report, one per business per month
     owner_alerts    WhatsApp alerts sent to the owner's own phone (e.g. "🔥 hot lead, call now")
     renewals        memberships/services about to expire, so the owner can offer a renewal
+    competitors     3-5 nearby rivals the owner watches (rating, reviews, activity)
+    competitor_alerts  one "they moved" note per noticed change
 
 How they connect:
 
@@ -52,7 +54,7 @@ with Redox Gym's business_id.
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, false, true
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, false, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -528,6 +530,48 @@ class Renewal(Base):
     reminders_sent: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     last_reminder_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class Competitor(Base):
+    """A nearby rival the owner wants to keep an eye on (Task 35), at most 5 per business.
+
+    No official Google ranking API exists, so the numbers below come from a paid
+    map-search data service (e.g. DataForSEO) once DATAFORSEO_LOGIN/PASSWORD are set
+    in .env; until then they're realistic, slowly-drifting pretend numbers (free mock mode).
+    """
+
+    __tablename__ = "competitors"
+    __table_args__ = (UniqueConstraint("business_id", "name", "area", name="uq_competitor_business_name_area"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    business_id: Mapped[int] = mapped_column(ForeignKey("businesses.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(150))
+    area: Mapped[str] = mapped_column(String(100), default="")            # where to search, e.g. "Dwarka, Delhi"
+    place_id: Mapped[Optional[str]] = mapped_column(String(150))          # Google's id for this listing, once matched
+    rating: Mapped[Optional[float]] = mapped_column(Float)
+    review_count: Mapped[Optional[int]] = mapped_column(Integer)
+    category: Mapped[str] = mapped_column(String(100), default="")
+    address: Mapped[str] = mapped_column(String(300), default="")
+    # The snapshot from before the latest check, so we can tell what moved
+    previous_rating: Mapped[Optional[float]] = mapped_column(Float)
+    previous_review_count: Mapped[Optional[int]] = mapped_column(Integer)
+    last_checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    problem: Mapped[str] = mapped_column(Text, default="")                # e.g. "not found on Google Maps"
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class CompetitorAlert(Base):
+    """One "a competitor moved" note (Task 35): a new batch of reviews, or their rating
+    shifting enough to matter. Shown on Competitor watch and on the live feed."""
+
+    __tablename__ = "competitor_alerts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    business_id: Mapped[int] = mapped_column(ForeignKey("businesses.id", ondelete="CASCADE"), index=True)
+    competitor_id: Mapped[int] = mapped_column(ForeignKey("competitors.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(20))                         # new_reviews / rating_up / rating_down
+    message: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
 
 
 class User(Base):

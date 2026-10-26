@@ -136,6 +136,7 @@ Check with http://127.0.0.1:8000/ai/status. Until then, every agent runs in free
 | **Renewal reminders** | Renewal agent writes the ready "your plan ends soon" message; plain code decides who's due and adds any price | A membership / service nears its expiry date (owner's choice of days before) |
 | **Fill your empty hours** | Offer agent writes a friendly invite for a slow time slot; plain code finds the slow hours and which past customers to invite | Owner opens "Fill your empty hours" |
 | **Local SEO checklist** | No AI: a plain-code checklist (profile completeness, Google connection, posts, reviews, reply rate), each item explaining why it affects ranking and how to fix it | Owner opens "SEO checklist" |
+| **Competitor watch** | No AI: 3-5 nearby rivals' rating and review count, re-checked weekly; an alert (here and on the live feed) when one moves | A watched competitor's rating or review count changes enough to matter |
 
 Rule everywhere: **plain code calculates the numbers, the AI only explains them**, and **nothing is posted or sent without the owner**.
 (The instant first reply is off until the owner turns it on and can preview it first; it never mentions prices,
@@ -167,6 +168,7 @@ Publish scheduled posts · refresh post numbers · send "please review us" Whats
 | Renewal reminders | `/renewals` (GET, POST), `/renewals/settings` (GET, PUT), `/renewals/{id}`, `/renewals/{id}/send`, `/snooze`, `/stop`, `/resume`, `/renewed` |
 | Fill your empty hours | `/slow-hours`, `/slow-hours/settings` (GET, PUT), `/slow-hours/{lead_id}`, `/slow-hours/{lead_id}/send`, `/skip` |
 | Local SEO checklist | `GET /seo?business_id=1` (score + the checklist) |
+| Competitor watch | `/competitors` (GET, POST), `/competitors/{id}` (DELETE), `/competitors/{id}/check`, `/competitors/alerts` |
 | Follow-up reminders | `/followups`, `/followups/settings` (GET, PUT), `/followups/{lead_id}`, `/followups/{lead_id}/send`, `/snooze`, `/stop`, `/resume` |
 | Monthly results | `/roi`, `/roi/reports`, `/roi/reports/{id}`, `/roi/reports/{id}/whatsapp`, `POST /roi/reports` |
 | Reputation | `/reviews`, `/reviews/summary`, `/reviews/draft-all`, `/reviews/{id}/reply`, `/review-requests` |
@@ -185,7 +187,8 @@ backend/app/
   plans.py           the price list (Starter / Growth / Pro) and what each includes
   auth/              passwords.py (scrambling), access.py (the guard: login + own-business check),
                      paywall.py (402 when the plan/trial has ended), vault.py (locks keys, signs links)
-  integrations/      meta.py (WhatsApp + Facebook), instagram.py, google.py: the real platform calls
+  integrations/      meta.py (WhatsApp + Facebook), instagram.py, google.py: the real platform calls,
+                     mapsearch.py (DataForSEO: Google Maps rating/review lookups for Task 35)
   emails/            templates.py: the words and look of every email
   site/              the public website: routes.py, templates/ (home, pricing, legal pages), static/site.css
   routers/           the addresses (one file per area)
@@ -197,7 +200,8 @@ backend/app/
                      email_service (queue, send, retry, reminders) + mailer (SMTP, or mock),
                      email_leads (reads Justdial/Sulekha/Practo lead emails), lead_import (Excel/CSV),
                      account_service (export / delete my data), launch_check (go-live checklist),
-                     followup_service, dues_service, renewal_service, slow_hours_service, seo_checklist
+                     followup_service, dues_service, renewal_service, slow_hours_service, seo_checklist,
+                     competitor_service
   agents/            llm.py (AI connector + mock mode), lead_graph.py, growth_graph.py, state.py
   agents/nodes/      one file per agent
 backend/seed/        demo data, traffic simulator, create_admin, restore_backup
@@ -252,7 +256,12 @@ backend/tests/       440 automatic checks
       NAP consistency (name/address/phone match everywhere), a complete Google profile, an active connection,
       recent Google posts, review count/rating, and reply rate — each item explains WHY it affects Google Maps
       ranking and HOW to fix it, no AI involved
-- [ ] Tasks 35–40: see the "Lead Intel: Roadmap, Go-Live and Approvals" guide
+- [x] Task 35: competitor watch ("Competitor watch" page, up to 5 competitors): add a nearby rival by name and
+      area, see its rating and review count, re-checked automatically about once a week; an alert here and on
+      the live feed when a competitor's rating or review count moves enough to matter. No AI — real numbers
+      need a paid map-search data service (DATAFORSEO_LOGIN/PASSWORD in .env, ~$0.0006–$0.002 a search, no
+      approval needed); until then it runs free in mock mode with realistic, slowly-drifting pretend numbers
+- [ ] Tasks 36–40: see the "Lead Intel: Roadmap, Go-Live and Approvals" guide
 
 ## Next (Part C: the business side)
 - Your domain, real accounts (Razorpay, email, Meta, Google), and the frontend: see DEPLOY.md

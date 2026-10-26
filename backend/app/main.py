@@ -19,9 +19,9 @@ from app.auth.paywall import require_active_plan
 from app.config import settings
 from app.database import SessionLocal, init_db
 from app.production import SecurityHeaders, bootstrap_admin, startup_problems, startup_warnings
-from app.routers import (account, agent_runs, ai, alerts, analytics, auth, auto_reply, billing, businesses, connections,
-                         content, dues, email_leads, emails, followups, growth, imports, leads, live, media, platforms,
-                         renewals, reviews, roi, scheduler, seo, slow_hours, social, webhooks)
+from app.routers import (account, agent_runs, ai, alerts, analytics, auth, auto_reply, billing, businesses, competitors,
+                         connections, content, dues, email_leads, emails, followups, growth, imports, leads, live, media,
+                         platforms, renewals, reviews, roi, scheduler, seo, slow_hours, social, webhooks)
 from app.site import routes as site
 from app.services import scheduler_service
 from app.services.event_bus import bus
@@ -128,7 +128,7 @@ app.include_router(account.router, dependencies=[Depends(get_current_user)])  # 
 login_and_plan = [Depends(get_current_user), Depends(require_active_plan)]
 for locked in (businesses, imports, leads, ai, agent_runs, analytics, social, content, scheduler, growth, reviews,
                live, connections, media, email_leads, roi, alerts, auto_reply, followups, dues, renewals, slow_hours,
-               seo):
+               seo, competitors):
     app.include_router(locked.router, dependencies=login_and_plan)
 
 

@@ -135,6 +135,13 @@ class Settings(BaseSettings):
     inbound_email_domain: str = "in.example.com"
     inbound_email_secret: str = "change-me-inbound"   # the email service must send this (X-Inbound-Key)
 
+    # Competitor watch (Task 35): Google has no official ranking API, so real numbers need a
+    # paid map-search data service, e.g. DataForSEO (dataforseo.com - no approval, just an
+    # account and credit; roughly $0.0006-0.002 per search). While the login/password below
+    # are empty, this runs in free MOCK mode with realistic, slowly-drifting pretend numbers.
+    dataforseo_login: str = ""
+    dataforseo_password: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
@@ -166,6 +173,10 @@ class Settings(BaseSettings):
     def ai_enabled(self) -> bool:
         """Real AI is used only when mock mode is off AND a key exists."""
         return not self.mock_ai and bool(self.anthropic_api_key)
+
+    @property
+    def mapsearch_enabled(self) -> bool:
+        return bool(self.dataforseo_login and self.dataforseo_password)
 
 
 @lru_cache

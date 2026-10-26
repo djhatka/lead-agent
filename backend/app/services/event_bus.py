@@ -49,6 +49,7 @@ EVENT_TYPES = {
     "email.confirm": "Gmail sent a forwarding confirmation code (Settings → Leads from email)",
     "connection.problem": "A connected account (WhatsApp/Instagram/Facebook/Google) needs reconnecting",
     "renewal.due": "Renewals are coming up: memberships or services expiring soon",
+    "competitor.moved": "A watched competitor's rating or reviews moved",
     "test": "A test event",
 }
 

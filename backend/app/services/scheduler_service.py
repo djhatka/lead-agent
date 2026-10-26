@@ -158,8 +158,8 @@ def run_cycle(db: Session) -> dict:
     from app.services.growth_service import weekly_reviews_due   # imported here to keep startup light
     from app.services.reputation_service import send_due_requests
 
-    from app.services import (alerts_service, connection_service, dues_service, email_service, followup_service,
-                              renewal_service, roi_service)
+    from app.services import (alerts_service, competitor_service, connection_service, dues_service, email_service,
+                              followup_service, renewal_service, roi_service)
 
     published, failed = publish_due(db)
     updated = refresh_stats(db)
@@ -173,13 +173,14 @@ def run_cycle(db: Session) -> dict:
     followups = followup_service.daily_reminders(db)            # after 10am: "3 enquiries need a follow-up"
     dues = dues_service.send_due_reminders(db)                  # polite "₹2,000 is due" WhatsApps (10am-8pm)
     renewal_reminders = renewal_service.daily_reminders(db)    # "Priya's membership ends in 5 days" (after 10am)
+    competitor_checks = competitor_service.weekly_checks_due(db)   # re-check any watched competitor 6+ days stale
     emails = email_service.deliver_pending(db)                  # send queued emails, retry failed ones
     backup = _nightly_backup(db)                                # after 3am India time, once a day
     LAST_RUN.update({"at": _now(), "published": published, "failed": failed, "stats_updated": updated,
                      "review_requests_sent": asked, "growth_reviews": reviews,
                      "google_reviews_fetched": google_reviews, "keys_renewed": renewed,
                      "trial_reminders": reminders, "roi_reports": roi_reports, "followup_reminders": followups, "payment_reminders": dues, "owner_alerts": alerts, "emails_sent": emails,
-                     "renewal_reminders": renewal_reminders, "backup": backup})
+                     "renewal_reminders": renewal_reminders, "competitor_checks": competitor_checks, "backup": backup})
     return dict(LAST_RUN)
 
 
