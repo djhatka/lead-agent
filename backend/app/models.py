@@ -151,6 +151,8 @@ class Business(Base):
     payment_settings: Mapped[Optional[dict]] = mapped_column(JSON)
     # Renewal reminders (Task 32): {"enabled": true, "remind_days_before": 5}
     renewal_settings: Mapped[Optional[dict]] = mapped_column(JSON)
+    # Fill your empty hours (Task 33): {"enabled": true, "min_days_since_won": 30}
+    slow_hours_settings: Mapped[Optional[dict]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     # Links to this business's rows in other tables.
@@ -221,6 +223,10 @@ class Lead(Base):
     # followup_stopped = the owner said "stop reminding me about this one"
     followup_snoozed_until: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     followup_stopped: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+
+    # Fill your empty hours (Task 33): the last time we invited this (past, won) customer
+    # back to fill a quiet slot, so we don't offer the same person again too soon.
+    last_slow_offer_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     # Links to other tables. These are NOT columns; they let Python do
     # `lead.messages` or `lead.analysis` instead of writing a search by hand.

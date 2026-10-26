@@ -62,14 +62,17 @@ def test_old_laptop_database_is_brought_up_to_date(empty_database):
         connection.exec_driver_sql("ALTER TABLE businesses DROP COLUMN followup_settings")
         connection.exec_driver_sql("ALTER TABLE businesses DROP COLUMN payment_settings")
         connection.exec_driver_sql("ALTER TABLE businesses DROP COLUMN renewal_settings")
+        connection.exec_driver_sql("ALTER TABLE businesses DROP COLUMN slow_hours_settings")
+        connection.exec_driver_sql("ALTER TABLE leads DROP COLUMN last_slow_offer_at")
     database.migrate()
     with empty_database.connect() as connection:
         version = connection.exec_driver_sql("select version_num from alembic_version").scalar()
-    assert version == "0007" and added_later <= set(inspect(empty_database).get_table_names())
+    assert version == "1fa9e753c1f6" and added_later <= set(inspect(empty_database).get_table_names())
     assert "won_at" in {c["name"] for c in inspect(empty_database).get_columns("leads")}
     assert "alert_phone" in {c["name"] for c in inspect(empty_database).get_columns("businesses")}
     assert "auto_reply" in {c["name"] for c in inspect(empty_database).get_columns("messages")}
     assert "followup_stopped" in {c["name"] for c in inspect(empty_database).get_columns("leads")}
+    assert "last_slow_offer_at" in {c["name"] for c in inspect(empty_database).get_columns("leads")}
 
 
 def test_demo_reset_starts_clean(empty_database):

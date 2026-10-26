@@ -133,6 +133,8 @@ Check with http://127.0.0.1:8000/ai/status. Until then, every agent runs in free
 | **Instant first reply** | First Reply agent (brand voice, customer's language, never prices); plain code checks it | A new WhatsApp / Instagram / Facebook enquiry, if the owner turned it on |
 | **Follow-up reminders** | Follow-up agent writes the ready message (owner edits and sends it); plain code decides who's due | An enquiry quiet for 2 days (owner's choice), opened from Home or the lead |
 | **Payments and dues** | No AI: plain-code messages (money is a fact). Payment page pays the owner's own UPI ID | "Request payment" in an enquiry, or "Add payment" on the Payments page |
+| **Renewal reminders** | Renewal agent writes the ready "your plan ends soon" message; plain code decides who's due and adds any price | A membership / service nears its expiry date (owner's choice of days before) |
+| **Fill your empty hours** | Offer agent writes a friendly invite for a slow time slot; plain code finds the slow hours and which past customers to invite | Owner opens "Fill your empty hours" |
 
 Rule everywhere: **plain code calculates the numbers, the AI only explains them**, and **nothing is posted or sent without the owner**.
 (The instant first reply is off until the owner turns it on and can preview it first; it never mentions prices,
@@ -161,6 +163,8 @@ Publish scheduled posts · refresh post numbers · send "please review us" Whats
 | Phone alerts | `/alerts/settings` (GET, PUT), `/alerts/test` |
 | Instant first reply | `/auto-reply/settings` (GET, PUT), `/auto-reply/preview` |
 | Payments and dues | `/dues`, `/dues/summary`, `/dues/settings` (GET, PUT), `/dues/{id}`, `/dues/{id}/send`, `/paid`, `/cancel`, `/reopen`; customer page `/pay/{token}` |
+| Renewal reminders | `/renewals` (GET, POST), `/renewals/settings` (GET, PUT), `/renewals/{id}`, `/renewals/{id}/send`, `/snooze`, `/stop`, `/resume`, `/renewed` |
+| Fill your empty hours | `/slow-hours`, `/slow-hours/settings` (GET, PUT), `/slow-hours/{lead_id}`, `/slow-hours/{lead_id}/send`, `/skip` |
 | Follow-up reminders | `/followups`, `/followups/settings` (GET, PUT), `/followups/{lead_id}`, `/followups/{lead_id}/send`, `/snooze`, `/stop`, `/resume` |
 | Monthly results | `/roi`, `/roi/reports`, `/roi/reports/{id}`, `/roi/reports/{id}/whatsapp`, `POST /roi/reports` |
 | Reputation | `/reviews`, `/reviews/summary`, `/reviews/draft-all`, `/reviews/{id}/reply`, `/review-requests` |
@@ -190,7 +194,8 @@ backend/app/
                      media_service (checks + cleans uploads), storage (where files live),
                      email_service (queue, send, retry, reminders) + mailer (SMTP, or mock),
                      email_leads (reads Justdial/Sulekha/Practo lead emails), lead_import (Excel/CSV),
-                     account_service (export / delete my data), launch_check (go-live checklist)
+                     account_service (export / delete my data), launch_check (go-live checklist),
+                     followup_service, dues_service, renewal_service, slow_hours_service
   agents/            llm.py (AI connector + mock mode), lead_graph.py, growth_graph.py, state.py
   agents/nodes/      one file per agent
 backend/seed/        demo data, traffic simulator, create_admin, restore_backup
@@ -235,7 +240,13 @@ backend/tests/       440 automatic checks
       never holds money), "I've paid" button for the customer, one-tap "Confirm paid", "₹ recovered this month",
       polite automatic WhatsApp reminders (due date, +3, +7 days; off by default). Razorpay automatic links: after
       the Razorpay Partner approval (go-live guide)
-- [ ] Tasks 32–40: see the "Lead Intel: Roadmap, Go-Live and Approvals" guide
+- [x] Task 32: renewal reminders (Renewals page, Settings → Renewal reminders): add a customer's membership or
+      service with its expiry date; a ready renewal message in the customer's language a few days before it ends;
+      sent / remind me later / stop / "Renewed"; plain code decides who's due and writes any price
+- [x] Task 33: fill your empty hours ("Fill your empty hours" page, Settings): plain code finds the business's slow
+      time slots from past enquiries and picks past customers who haven't come back for a while; the AI writes a
+      friendly invite for that slot (never invents prices); sent / skip, so nobody is invited too often
+- [ ] Tasks 34–40: see the "Lead Intel: Roadmap, Go-Live and Approvals" guide
 
 ## Next (Part C: the business side)
 - Your domain, real accounts (Razorpay, email, Meta, Google), and the frontend: see DEPLOY.md
