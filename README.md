@@ -135,6 +135,7 @@ Check with http://127.0.0.1:8000/ai/status. Until then, every agent runs in free
 | **Payments and dues** | No AI: plain-code messages (money is a fact). Payment page pays the owner's own UPI ID | "Request payment" in an enquiry, or "Add payment" on the Payments page |
 | **Renewal reminders** | Renewal agent writes the ready "your plan ends soon" message; plain code decides who's due and adds any price | A membership / service nears its expiry date (owner's choice of days before) |
 | **Fill your empty hours** | Offer agent writes a friendly invite for a slow time slot; plain code finds the slow hours and which past customers to invite | Owner opens "Fill your empty hours" |
+| **Local SEO checklist** | No AI: a plain-code checklist (profile completeness, Google connection, posts, reviews, reply rate), each item explaining why it affects ranking and how to fix it | Owner opens "SEO checklist" |
 
 Rule everywhere: **plain code calculates the numbers, the AI only explains them**, and **nothing is posted or sent without the owner**.
 (The instant first reply is off until the owner turns it on and can preview it first; it never mentions prices,
@@ -165,6 +166,7 @@ Publish scheduled posts · refresh post numbers · send "please review us" Whats
 | Payments and dues | `/dues`, `/dues/summary`, `/dues/settings` (GET, PUT), `/dues/{id}`, `/dues/{id}/send`, `/paid`, `/cancel`, `/reopen`; customer page `/pay/{token}` |
 | Renewal reminders | `/renewals` (GET, POST), `/renewals/settings` (GET, PUT), `/renewals/{id}`, `/renewals/{id}/send`, `/snooze`, `/stop`, `/resume`, `/renewed` |
 | Fill your empty hours | `/slow-hours`, `/slow-hours/settings` (GET, PUT), `/slow-hours/{lead_id}`, `/slow-hours/{lead_id}/send`, `/skip` |
+| Local SEO checklist | `GET /seo?business_id=1` (score + the checklist) |
 | Follow-up reminders | `/followups`, `/followups/settings` (GET, PUT), `/followups/{lead_id}`, `/followups/{lead_id}/send`, `/snooze`, `/stop`, `/resume` |
 | Monthly results | `/roi`, `/roi/reports`, `/roi/reports/{id}`, `/roi/reports/{id}/whatsapp`, `POST /roi/reports` |
 | Reputation | `/reviews`, `/reviews/summary`, `/reviews/draft-all`, `/reviews/{id}/reply`, `/review-requests` |
@@ -195,7 +197,7 @@ backend/app/
                      email_service (queue, send, retry, reminders) + mailer (SMTP, or mock),
                      email_leads (reads Justdial/Sulekha/Practo lead emails), lead_import (Excel/CSV),
                      account_service (export / delete my data), launch_check (go-live checklist),
-                     followup_service, dues_service, renewal_service, slow_hours_service
+                     followup_service, dues_service, renewal_service, slow_hours_service, seo_checklist
   agents/            llm.py (AI connector + mock mode), lead_graph.py, growth_graph.py, state.py
   agents/nodes/      one file per agent
 backend/seed/        demo data, traffic simulator, create_admin, restore_backup
@@ -246,7 +248,11 @@ backend/tests/       440 automatic checks
 - [x] Task 33: fill your empty hours ("Fill your empty hours" page, Settings): plain code finds the business's slow
       time slots from past enquiries and picks past customers who haven't come back for a while; the AI writes a
       friendly invite for that slot (never invents prices); sent / skip, so nobody is invited too often
-- [ ] Tasks 34–40: see the "Lead Intel: Roadmap, Go-Live and Approvals" guide
+- [x] Task 34: local SEO checklist ("SEO checklist" page): a 0-100 score and a plain-code checklist covering
+      NAP consistency (name/address/phone match everywhere), a complete Google profile, an active connection,
+      recent Google posts, review count/rating, and reply rate — each item explains WHY it affects Google Maps
+      ranking and HOW to fix it, no AI involved
+- [ ] Tasks 35–40: see the "Lead Intel: Roadmap, Go-Live and Approvals" guide
 
 ## Next (Part C: the business side)
 - Your domain, real accounts (Razorpay, email, Meta, Google), and the frontend: see DEPLOY.md
