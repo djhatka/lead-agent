@@ -5,40 +5,41 @@
   Big screens show all of it in the sidebar. Phones show the four
   everyday pages in the bottom bar, and the rest under "More".
 */
-import { Bot, CalendarDays, ChartColumn, ChartPie, House, Inbox, IndianRupee, ListChecks, Plug, RefreshCw, Settings, Star, Trophy } from 'lucide-react'
+import { Bot, CalendarDays, ChartColumn, ChartPie, House, Inbox, IndianRupee, ListChecks, Plug, Wallet, RefreshCw, Settings, Star, Trophy } from 'lucide-react'
 
 export const NAV_GROUPS = [
   {
-    label: null,
+    labelKey: null,
     items: [
-      { path: '/', label: 'Home', icon: House, end: true },
-      { path: '/leads', label: 'Enquiries', icon: Inbox, badge: 'hot' },
-      { path: '/payments', label: 'Payments', icon: IndianRupee, badge: 'payments' },
-      { path: '/renewals', label: 'Renewals', icon: RefreshCw },
-      { path: '/sources', label: 'Where customers come from', short: 'Sources', icon: ChartPie },
+      { path: '/', labelKey: 'nav.home', icon: House, end: true },
+      { path: '/leads', labelKey: 'nav.leads', icon: Inbox, badge: 'hot' },
+      { path: '/payments', labelKey: 'nav.payments', icon: IndianRupee, badge: 'payments' },
+      { path: '/renewals', labelKey: 'nav.renewals', icon: RefreshCw },
+      { path: '/sources', labelKey: 'nav.sources', shortKey: 'nav.sources.short', icon: ChartPie },
     ],
   },
   {
-    label: 'Social media',
+    labelKey: 'nav.group.socialMedia',
     items: [
-      { path: '/content', label: 'Content calendar', short: 'Content', icon: CalendarDays, end: true },
-      { path: '/content/performance', label: "What's working", icon: ChartColumn },
+      { path: '/content', labelKey: 'nav.content', shortKey: 'nav.content.short', icon: CalendarDays, end: true },
+      { path: '/content/performance', labelKey: 'nav.contentPerformance', icon: ChartColumn },
     ],
   },
   {
-    label: 'Growth',
+    labelKey: 'nav.group.growth',
     items: [
-      { path: '/results', label: 'Your results', short: 'Results', icon: Trophy },
-      { path: '/weekly-review', label: 'Weekly review', icon: ListChecks },
-      { path: '/reviews', label: 'Reviews', icon: Star, badge: 'reviews' },
+      { path: '/results', labelKey: 'nav.results', shortKey: 'nav.results.short', icon: Trophy },
+      { path: '/weekly-review', labelKey: 'nav.weeklyReview', icon: ListChecks },
+      { path: '/reviews', labelKey: 'nav.reviews', icon: Star, badge: 'reviews' },
     ],
   },
   {
-    label: 'Behind the scenes',
+    labelKey: 'nav.group.behindScenes',
     items: [
-      { path: '/ai-team', label: 'AI team', icon: Bot },
-      { path: '/settings/connections', label: 'Connected apps', short: 'Apps', icon: Plug },
-      { path: '/settings', label: 'Settings', icon: Settings, end: true },
+      { path: '/ai-team', labelKey: 'nav.aiTeam', icon: Bot },
+      { path: '/settings/connections', labelKey: 'nav.connections', shortKey: 'nav.connections.short', icon: Plug, requires: 'connect_apps' },
+      { path: '/billing', labelKey: 'nav.billing', icon: Wallet },
+      { path: '/settings', labelKey: 'nav.settings', icon: Settings, end: true },
     ],
   },
 ]
@@ -47,8 +48,11 @@ export const NAV = NAV_GROUPS.flatMap((group) => group.items)
 
 /* The phone's bottom bar (plus "More"). `match` = which addresses light it up. */
 export const BOTTOM_NAV = [
-  { path: '/', label: 'Home', icon: House, match: (p) => p === '/' },
-  { path: '/leads', label: 'Enquiries', icon: Inbox, badge: 'hot', match: (p) => p.startsWith('/leads') },
-  { path: '/content', label: 'Content', icon: CalendarDays, match: (p) => p.startsWith('/content') },
-  { path: '/reviews', label: 'Reviews', icon: Star, badge: 'reviews', match: (p) => p.startsWith('/reviews') },
+  { path: '/', labelKey: 'nav.home', icon: House, match: (p) => p === '/' },
+  { path: '/leads', labelKey: 'nav.leads', icon: Inbox, badge: 'hot', match: (p) => p.startsWith('/leads') },
+  { path: '/content', labelKey: 'nav.content.short', icon: CalendarDays, match: (p) => p.startsWith('/content') },
+  { path: '/reviews', labelKey: 'nav.reviews', icon: Star, badge: 'reviews', match: (p) => p.startsWith('/reviews') },
 ]
+
+/* Hide the menu items whose feature the server hasn't switched on. */
+export const visible = (items, on) => items.filter((item) => !item.requires || on(item.requires))

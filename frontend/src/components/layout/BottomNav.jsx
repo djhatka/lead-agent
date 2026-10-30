@@ -15,14 +15,17 @@ import { fadeIn, spring } from '@/animations/presets'
 import { NavCount } from '@/components/layout/NavBadges'
 import { StatusFooter } from '@/components/layout/StatusFooter'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { useLanguage } from '@/hooks/useLanguage'
 import { useLockScroll } from '@/hooks/useLockScroll'
 import { useNavCounts } from '@/hooks/useNavCounts'
-import { BOTTOM_NAV, NAV } from '@/nav'
+import { useFeatures } from '@/hooks/useFeatures'
+import { BOTTOM_NAV, NAV, visible } from '@/nav'
 
-const MORE = NAV.filter((item) => !BOTTOM_NAV.some((b) => b.path === item.path))
+const ALL_MORE = NAV.filter((item) => !BOTTOM_NAV.some((b) => b.path === item.path))
 
-function MoreSheet({ onClose }) {
+function MoreSheet({ onClose, MORE }) {
   const { pathname } = useLocation()
+  const { t } = useLanguage()
   useLockScroll()
 
   useEffect(() => {
@@ -44,19 +47,19 @@ function MoreSheet({ onClose }) {
         className="fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-pop lg:hidden"
       >
         <div className="mb-3 flex items-center justify-between">
-          <p className="text-base font-semibold text-ink">More</p>
+          <p className="text-base font-semibold text-ink">{t('common.more')}</p>
           <button
             type="button"
             autoFocus
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="flex size-11 cursor-pointer items-center justify-center rounded-control text-ink-2 hover:bg-surface-sunken"
           >
             <X aria-hidden className="size-5" />
           </button>
         </div>
         <ul className="grid grid-cols-2 gap-2">
-          {MORE.map(({ path, label, short, icon: Icon }) => {
+          {MORE.map(({ path, labelKey, shortKey, icon: Icon }) => {
             const active = pathname === path
             return (
               <li key={path}>
@@ -70,14 +73,14 @@ function MoreSheet({ onClose }) {
                   )}
                 >
                   <Icon aria-hidden className="size-5" />
-                  {short ?? label}
+                  {t(shortKey ?? labelKey)}
                 </Link>
               </li>
             )
           })}
         </ul>
         <div className="mt-4 flex items-center justify-between rounded-card border border-line bg-surface-raised p-3">
-          <span className="text-sm font-medium text-ink">Theme</span>
+          <span className="text-sm font-medium text-ink">{t('common.theme')}</span>
           <ThemeToggle />
         </div>
         <div className="mt-3">
@@ -91,6 +94,9 @@ function MoreSheet({ onClose }) {
 export function BottomNav() {
   const { pathname } = useLocation()
   const counts = useNavCounts()
+  const { t } = useLanguage()
+  const features = useFeatures()
+  const MORE = visible(ALL_MORE, features.on)
   // The sheet remembers the page it was opened on, so changing page closes it.
   const [openedOn, setOpenedOn] = useState(null)
   const moreOpen = openedOn === pathname
@@ -105,7 +111,7 @@ export function BottomNav() {
         className="glass fixed inset-x-0 bottom-0 z-30 rounded-none border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] lg:hidden"
       >
         <ul className="flex h-16">
-          {BOTTOM_NAV.map(({ path, label, icon: Icon, badge, match }) => {
+          {BOTTOM_NAV.map(({ path, labelKey, icon: Icon, badge, match }) => {
             const active = match(pathname)
             return (
               <li key={path} className="flex flex-1">
@@ -115,7 +121,7 @@ export function BottomNav() {
                     <Icon aria-hidden className="relative size-5" />
                     {badge && <NavCount kind={badge} value={counts[badge]} compact className="absolute -top-1 right-1.5" />}
                   </span>
-                  {label}
+                  {t(labelKey)}
                 </Link>
               </li>
             )
@@ -131,12 +137,12 @@ export function BottomNav() {
                 {moreActive && <motion.span layoutId="bottom-active" transition={spring.snappy} className="absolute inset-0 rounded-full bg-brand-soft" />}
                 <Ellipsis aria-hidden className="relative size-5" />
               </span>
-              More
+              {t('common.more')}
             </button>
           </li>
         </ul>
       </nav>
-      <AnimatePresence>{moreOpen && <MoreSheet onClose={() => setOpenedOn(null)} />}</AnimatePresence>
+      <AnimatePresence>{moreOpen && <MoreSheet MORE={MORE} onClose={() => setOpenedOn(null)} />}</AnimatePresence>
     </>
   )
 }

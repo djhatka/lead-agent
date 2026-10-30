@@ -18,6 +18,7 @@ import { auth } from '@/api/client'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { router } from '@/routes'
+import { useFeatures } from '@/hooks/useFeatures'
 
 const field =
   'mt-1 h-11 w-full rounded-control border border-line bg-surface-raised px-3 text-ink outline-none focus:border-brand'
@@ -37,8 +38,8 @@ const INDUSTRIES = [
   ['other', 'Something else'],
 ]
 
-function Steps({ step }) {
-  const names = ['Your account', 'Your business', 'Connect apps']
+function Steps({ step, connect = true }) {
+  const names = ['Your account', 'Your business', connect ? 'Connect apps' : 'Start']
   return (
     <ol className="mb-5 flex gap-2" aria-label={`Step ${step} of 3`}>
       {names.map((name, i) => (
@@ -52,6 +53,7 @@ function Steps({ step }) {
 }
 
 export default function Signup({ onLogin }) {
+  const features = useFeatures()
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     name: '', email: '', password: '',
@@ -82,7 +84,7 @@ export default function Signup({ onLogin }) {
         phone: form.phone.trim() || null,
       }
       await auth.signup(details) // logged in: the dashboard appears
-      router.navigate('/settings/connections?welcome=1') // …on step 3
+      router.navigate(features.on('connect_apps') ? '/settings/connections?welcome=1' : '/') // …on step 3
     } catch (problem) {
       // An email that's already used, or a field the backend didn't accept.
       const message = problem.message ?? 'Something went wrong. Please try again.'
@@ -97,7 +99,7 @@ export default function Signup({ onLogin }) {
       <Card className="w-full max-w-md">
         <p className="font-bold text-ink">Growth Partner</p>
         <h1 className="mt-1 mb-4 text-2xl font-semibold text-ink">Create your account</h1>
-        <Steps step={step} />
+        <Steps step={step} connect={features.on('connect_apps')} />
 
         {step === 1 ? (
           <form onSubmit={next} className="space-y-4">
@@ -164,7 +166,9 @@ export default function Signup({ onLogin }) {
               <input type="tel" inputMode="tel" value={form.phone} onChange={set('phone')} className={field} placeholder="98100 00000" />
             </label>
             <p className="text-xs text-ink-3">
-              Next you'll connect your Instagram, Facebook, WhatsApp and Google. Logging in to them proves the business is yours.
+              {features.on('connect_apps')
+                ? "Next you'll connect your Instagram, Facebook, WhatsApp and Google. Logging in to them proves the business is yours."
+                : 'Next you land in your dashboard, with a free trial. Connecting Instagram, WhatsApp and Google is coming soon.'}
             </p>
             {error && (
               <p role="alert" className="rounded-control bg-critical-soft p-3 text-sm text-critical-ink">

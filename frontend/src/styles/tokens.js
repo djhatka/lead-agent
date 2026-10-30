@@ -10,6 +10,7 @@
   readers). The colour is always shown WITH the channel's name.
 */
 import {
+  Briefcase,
   Building2,
   CalendarClock,
   Camera,
@@ -63,6 +64,8 @@ export const PLATFORMS = {
   whatsapp: { label: 'WhatsApp', icon: MessageCircle, color: 'var(--ch-whatsapp)' },
   whatsapp_business: { label: 'WhatsApp Business', icon: MessageCircle, color: 'var(--ch-whatsapp)' },
   youtube: { label: 'YouTube', icon: Play, color: 'var(--critical)' },
+  // Task 40: LinkedIn Company Page posting (B2B, coaching, real estate)
+  linkedin: { label: 'LinkedIn', icon: Briefcase, color: 'var(--ch-indiamart)' },
 }
 
 export function platform(key) {
@@ -278,12 +281,16 @@ export const dateTime = when
 /* 0 → "12 am", 13 → "1 pm" */
 export const hourLabel = (h) => `${h % 12 || 12} ${h < 12 ? 'am' : 'pm'}`
 
-/** "Good morning" / "Good afternoon" / "Good evening", by India time. */
-export function greeting() {
+/** "Good morning" / "Good afternoon" / "Good evening", by India time. Pass lang="hi" for Hindi. */
+export function greeting(lang = 'en') {
   const hour = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: IST }))
-  if (hour < 12) return 'Good morning'
-  if (hour < 17) return 'Good afternoon'
-  return 'Good evening'
+  const words =
+    lang === 'hi'
+      ? { morning: 'सुप्रभात', afternoon: 'नमस्कार', evening: 'शुभ संध्या' }
+      : { morning: 'Good morning', afternoon: 'Good afternoon', evening: 'Good evening' }
+  if (hour < 12) return words.morning
+  if (hour < 17) return words.afternoon
+  return words.evening
 }
 
 /* Reply time in words: 3 → "3 min", 95 → "1.6 hrs", 3000 → "2.1 days". */

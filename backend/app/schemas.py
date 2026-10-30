@@ -128,6 +128,7 @@ class BusinessCreate(Schema):
     phone: Optional[str] = None
     website: Optional[str] = Field(default=None, max_length=200)
     google_review_link: Optional[str] = Field(default=None, max_length=300, pattern=r"^https://")
+    language: Literal["en", "hi"] = "en"
 
     _lower = field_validator("industry", mode="before")(lowercase)
     _phone = field_validator("phone")(clean_phone)
@@ -158,6 +159,7 @@ class BusinessUpdate(Schema):
     phone: Optional[str] = None
     website: Optional[str] = Field(default=None, max_length=200)
     google_review_link: Optional[str] = Field(default=None, max_length=300, pattern=r"^https://")
+    language: Optional[Literal["en", "hi"]] = None
 
     _lower = field_validator("industry", mode="before")(lowercase)
     _phone = field_validator("phone")(clean_phone)
@@ -176,6 +178,7 @@ class BusinessOut(Schema):
     phone: Optional[str]
     website: Optional[str]
     google_review_link: Optional[str] = None
+    language: str = "en"
     created_at: UTCDateTime
 
 

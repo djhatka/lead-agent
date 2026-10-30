@@ -13,7 +13,7 @@
   All times are India time.
 */
 import clsx from 'clsx'
-import { CalendarClock, PenLine, Plus, Save, Send, Trash2, Undo2, X } from 'lucide-react'
+import { CalendarClock, Check, Copy, PenLine, Plus, Save, Send, Trash2, Undo2, X } from 'lucide-react'
 import { useState } from 'react'
 
 import { AiLabel, WhyNote } from '@/components/ui/AiNote'
@@ -22,8 +22,10 @@ import { Button } from '@/components/ui/Button'
 import { ConfirmButton } from '@/components/ui/ConfirmButton'
 import { Drawer } from '@/components/ui/Drawer'
 import { toast } from '@/components/ui/toast'
+import { useFeatures } from '@/hooks/useFeatures'
 import {
   useDeletePost,
+  useMarkPosted,
   usePublishNow,
   useSchedulePost,
   useUnschedulePost,
@@ -188,6 +190,9 @@ export function PostEditor({ post, onClose }) {
   const schedule = useSchedulePost()
   const unschedule = useUnschedulePost()
   const publish = usePublishNow()
+  const markPosted = useMarkPosted()
+  const features = useFeatures()
+  const byHand = !features.on('auto_posting')   // launch version: the owner posts it, then taps "Mark as posted"
   const remove = useDeletePost()
 
   const [form, setForm] = useState(() => fromPost(post))
@@ -323,14 +328,30 @@ export function PostEditor({ post, onClose }) {
             Save changes
           </Button>
         )}
-        <ConfirmButton icon={Send} question="Post it now?" confirmLabel="Yes, post now" loading={publish.isPending} onConfirm={() => run(async () => {
-          await saveIfNeeded()
-          await publish.mutateAsync(post.id)
-          toast({ title: 'Posted', body: `${post.title} is live on ${platform(form.platform).label}.`, tone: 'good' })
-          onClose()
-        })}>
-          Post now
-        </ConfirmButton>
+        {byHand ? (
+          <>
+            <Button icon={Copy} onClick={() => navigator.clipboard?.writeText(form.caption).then(() => toast({ title: 'Caption copied', tone: 'good' }))}>
+              Copy caption
+            </Button>
+            <ConfirmButton icon={Check} question="Did you post it?" confirmLabel="Yes, it is posted" loading={markPosted.isPending} onConfirm={() => run(async () => {
+              await saveIfNeeded()
+              await markPosted.mutateAsync(post.id)
+              toast({ title: 'Marked as posted', body: `${post.title} is recorded as posted.`, tone: 'good' })
+              onClose()
+            })}>
+              Mark as posted
+            </ConfirmButton>
+          </>
+        ) : (
+          <ConfirmButton icon={Send} question="Post it now?" confirmLabel="Yes, post now" loading={publish.isPending} onConfirm={() => run(async () => {
+            await saveIfNeeded()
+            await publish.mutateAsync(post.id)
+            toast({ title: 'Posted', body: `${post.title} is live on ${platform(form.platform).label}.`, tone: 'good' })
+            onClose()
+          })}>
+            Post now
+          </ConfirmButton>
+        )}
       </div>
     </div>
   ) : (
@@ -409,7 +430,7 @@ export function PostEditor({ post, onClose }) {
         )}
         {post.status === 'scheduled' && (
           <p className="rounded-control border border-brand/30 bg-brand-soft p-3 text-sm text-ink">
-            Goes out <span className="font-semibold">{when(post.scheduled_at)}</span> on {platform(post.platform).label}. You can still change it.
+            Goes out <span className="font-semibold">{when(post.scheduled_at)}</span> on {platform(post.platform).label}.{byHand ? ' Lead Intel does not post for you yet: copy the caption, post it yourself, then tap "Mark as posted".' : ' You can still change it.'}
           </p>
         )}
         {live && <Results post={post} />}

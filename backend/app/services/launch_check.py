@@ -3,6 +3,7 @@
 demo/default values. Used by GET /admin/launch-check (and Task 26).
 """
 
+from app import features
 from app.config import settings
 
 DEFAULTS = {"secret_key": "dev-only-secret-change-me", "webhook_verify_token": "change-me",
@@ -33,6 +34,13 @@ def checks() -> list[dict]:
         ("One-time admin variables removed", not (s.bootstrap_admin_email or s.bootstrap_admin_password),
          "delete BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD in Railway after the first start"),
     ]
+    if features.is_light():
+        # The launch version works without these accounts: they switch on by themselves once the keys are added
+        later = {"Real payments (Razorpay)", "Meta app (WhatsApp, Facebook)", "Instagram app", "Google app"}
+        items = [i for i in items if i[0] not in later]
+        items.append(("Plans are activated by hand until Razorpay is set up",
+                      s.payments_enabled or bool(s.support_phone or s.support_email),
+                      "SUPPORT_PHONE or SUPPORT_EMAIL (owners are told where to pay), then POST /admin/billing/activate"))
     must = {"SECRET_KEY changed from the demo value", "WEBHOOK_VERIFY_TOKEN changed", "INBOUND_EMAIL_SECRET changed",
             "PUBLIC_API_URL is a public https address", "FRONTEND_ORIGIN is the live dashboard",
             "Company details on the legal pages", "Grievance officer named"}

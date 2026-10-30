@@ -31,6 +31,8 @@ SQLAlchemy reads these classes and creates the real tables in leads.db.
     competitors     3-5 nearby rivals the owner watches (rating, reviews, activity)
     competitor_alerts  one "they moved" note per noticed change
     bookings        booking slots inside WhatsApp: a shareable link, a time picked, no back-and-forth
+    tracking_numbers  one phone number per business, for call tracking
+    calls           every call through a tracking number: missed flagged, completed gets an AI note
 
 How they connect:
 
@@ -159,6 +161,8 @@ class Business(Base):
     # Booking slots (Task 37): when customers can book, and how long each slot is
     #   {"slot_minutes": 30, "days_ahead": 7, "start_hour": 10, "end_hour": 19, "closed_weekdays": [6]}
     booking_settings: Mapped[Optional[dict]] = mapped_column(JSON)
+    # Dashboard language (Task 39): "en" or "hi" - one switch, every screen follows it
+    language: Mapped[str] = mapped_column(String(5), default="en", server_default="en")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     # Links to this business's rows in other tables.
@@ -606,6 +610,45 @@ class Booking(Base):
     duration_minutes: Mapped[int] = mapped_column(Integer, default=30, server_default="30")    # a snapshot at creation
     confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class TrackingNumber(Base):
+    """One phone number per business (Task 38): customers call it instead of the owner's
+    real number; the provider forwards it straight through, and every call shows up here."""
+
+    __tablename__ = "tracking_numbers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    business_id: Mapped[int] = mapped_column(ForeignKey("businesses.id", ondelete="CASCADE"), unique=True, index=True)
+    number: Mapped[str] = mapped_column(String(20))
+    provider_sid: Mapped[str] = mapped_column(String(60), default="")      # the provider's own id for this number
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+CALL_STATUSES = ("ringing", "completed", "missed", "failed")
+
+
+class Call(Base):
+    """One phone call through the business's tracking number (Task 38). Missed calls are
+    flagged for a call-back; completed calls get a short AI note on what the caller asked
+    about, when a transcript is available (not every provider/plan includes one)."""
+
+    __tablename__ = "calls"
+    __table_args__ = (UniqueConstraint("business_id", "external_id", name="uq_call_business_external"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    business_id: Mapped[int] = mapped_column(ForeignKey("businesses.id", ondelete="CASCADE"), index=True)
+    external_id: Mapped[str] = mapped_column(String(100))                  # the provider's own call id
+    from_number: Mapped[str] = mapped_column(String(20), default="")
+    # ringing → completed / missed / failed
+    status: Mapped[str] = mapped_column(String(12), default="ringing", index=True)
+    duration_seconds: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    recording_url: Mapped[str] = mapped_column(String(500), default="")
+    transcript: Mapped[str] = mapped_column(Text, default="")              # raw, when the provider sends one
+    note: Mapped[str] = mapped_column(Text, default="")                    # the AI's one-line "what they asked"
+    called_back_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 

@@ -4,6 +4,7 @@ Scheduling, publishing and performance endpoints.
     POST /posts/{id}/schedule        approve a draft and set when it goes out
     POST /posts/{id}/unschedule      take it back to draft
     POST /posts/{id}/publish-now     publish immediately
+    POST /posts/{id}/mark-posted     the owner posted it by hand: record it as published
     GET  /scheduler/status           is the alarm clock running? what's due next?
     POST /scheduler/run              run one cycle right now (publish due posts + refresh numbers)
     POST /content/refresh-stats      re-read the numbers of a business's recent posts now
@@ -57,6 +58,12 @@ def unschedule(post_id: int, db: Session = Depends(get_db)):
 @router.post("/posts/{post_id}/publish-now", response_model=PostOut)
 def publish_now(post_id: int, db: Session = Depends(get_db)):
     post = _apply(scheduler_service.publish_now, db, post_or_404(post_id, db))
+    return social_service.posts_out(db, [post])[0]
+
+
+@router.post("/posts/{post_id}/mark-posted", response_model=PostOut)
+def mark_posted(post_id: int, db: Session = Depends(get_db)):
+    post = _apply(scheduler_service.mark_posted, db, post_or_404(post_id, db))
     return social_service.posts_out(db, [post])[0]
 
 

@@ -22,6 +22,7 @@ import { ErrorState } from '@/components/ui/States'
 import { toast } from '@/components/ui/toast'
 import { Toaster } from '@/components/ui/Toaster'
 import { useBusiness } from '@/hooks/useBusiness'
+import { useLanguage } from '@/hooks/useLanguage'
 import { LiveFeedConnection, useLiveEvent } from '@/hooks/useLiveFeed'
 import { useRouteHandle } from '@/hooks/useRouteHandle'
 import { channel, serviceLabel } from '@/styles/tokens'
@@ -29,18 +30,19 @@ import { channel, serviceLabel } from '@/styles/tokens'
 /** 🔥 A new hot enquiry pops up the moment the AI flags it (from the server's live feed). */
 function HotLeadAlerts() {
   const { business } = useBusiness()
+  const { t } = useLanguage()
   useLiveEvent('hot_lead', (event) => {
     const lead = event.data ?? {}
     if (!business || isSampleOnlyBusiness(business.id)) return // the feed is the server's own business
     if (lead.business_id != null && lead.business_id !== business.id) return
     toast({
-      title: 'New hot enquiry',
-      body: [lead.name ?? 'Someone', `on ${channel(lead.source).label}`, serviceLabel(lead.service), `score ${lead.score}`]
+      title: t('toast.newHotEnquiry'),
+      body: [lead.name ?? t('toast.someone'), `on ${channel(lead.source).label}`, serviceLabel(lead.service), `score ${lead.score}`]
         .filter(Boolean)
         .join(' · '),
       tone: 'accent',
       to: `/leads/${lead.lead_id}`,
-      action: 'Open enquiry',
+      action: t('toast.openEnquiry'),
       seconds: 10,
     })
   })
@@ -50,16 +52,18 @@ function HotLeadAlerts() {
 /** 💰 A customer pressed "I've paid" on their payment page: check the UPI app and confirm. */
 function PaymentAlerts() {
   const { business } = useBusiness()
+  const { t } = useLanguage()
   useLiveEvent('payment_claimed', (event) => {
     if (!business || event.data?.business_id !== business.id) return
-    toast({ title: event.title, body: event.message, tone: 'good', to: '/payments', action: 'Confirm it', seconds: 10 })
+    toast({ title: event.title, body: event.message, tone: 'good', to: '/payments', action: t('toast.confirmIt'), seconds: 10 })
   })
   return null
 }
 
 function PageSkeleton() {
+  const { t } = useLanguage()
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Loading">
+    <div className="space-y-6" aria-busy="true" aria-label={t('common.loading')}>
       <Skeleton className="h-9 w-56" />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }, (_, i) => (
@@ -75,10 +79,12 @@ export function AppShell() {
   const { query: businesses } = useBusiness()
   const handle = useRouteHandle()
   const client = useQueryClient()
+  const { t } = useLanguage()
 
+  const pageTitle = handle.titleKey ? t(handle.titleKey) : handle.title
   useEffect(() => {
-    document.title = handle.title ? `${handle.title} · Growth Partner` : 'Growth Partner'
-  }, [handle.title])
+    document.title = pageTitle ? `${pageTitle} · Growth Partner` : 'Growth Partner'
+  }, [pageTitle])
 
   return (
     <div className="min-h-dvh lg:pl-64">
@@ -86,7 +92,7 @@ export function AppShell() {
         href="#content"
         className="sr-only z-50 rounded-control bg-brand px-4 py-2 text-on-brand focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
       >
-        Skip to content
+        {t('common.skipToContent')}
       </a>
 
       <aside className="glass fixed inset-y-0 left-0 z-30 hidden w-64 rounded-none border-y-0 border-l-0 lg:block">
@@ -98,7 +104,7 @@ export function AppShell() {
       <main id="content" tabIndex={-1} className="mx-auto max-w-7xl px-4 pt-6 pb-28 outline-none sm:px-6 lg:pb-12">
         {businesses.isError ? (
           <ErrorState
-            title="Can't reach your dashboard's server"
+            title={t('common.cantReachServer')}
             error={businesses.error}
             onRetry={() => client.invalidateQueries()}
           />

@@ -25,6 +25,7 @@ import { QueryCard } from '@/components/ui/QueryCard'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState, InlineError } from '@/components/ui/States'
 import { toast } from '@/components/ui/toast'
+import { useFeatures } from '@/hooks/useFeatures'
 import { useDraftAll, usePostReply, useReviewRequests, useReviews, useReviewSummary, useSkipRequest } from '@/hooks/useReviews'
 import { plural, REQUEST_STATUSES, serviceLabel, shortDate, timeAgo, when } from '@/styles/tokens'
 
@@ -330,6 +331,7 @@ function Requests() {
 }
 
 export default function Reviews() {
+  const features = useFeatures()
   return (
     <div>
       <PageHeader />
@@ -341,9 +343,11 @@ export default function Reviews() {
           <motion.div variants={fadeUp}>
             <ReviewList />
           </motion.div>
-          <motion.div variants={fadeUp}>
-            <Requests />
-          </motion.div>
+          {features.on('whatsapp_messaging') && (
+            <motion.div variants={fadeUp}>
+              <Requests />
+            </motion.div>
+          )}
         </div>
       </motion.div>
     </div>

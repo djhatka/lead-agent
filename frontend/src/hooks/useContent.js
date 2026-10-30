@@ -50,6 +50,7 @@ export const useUpdatePost = () => useContentMutation((b, { id, changes }) => ap
 export const useSchedulePost = () => useContentMutation((b, { id, scheduledAt }) => api.schedulePost(b, id, scheduledAt))
 export const useUnschedulePost = () => useContentMutation((b, id) => api.unschedulePost(b, id))
 export const usePublishNow = () => useContentMutation((b, id) => api.publishNow(b, id))
+export const useMarkPosted = () => useContentMutation((b, id) => api.markPosted(b, id))
 export const useDeletePost = () => useContentMutation((b, id) => api.deletePost(b, id))
 
 export function useTopPosts(by) {

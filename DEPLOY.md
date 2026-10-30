@@ -36,6 +36,19 @@ Postgres + the `api` service from the repo (root folder `backend`), a 5 GB `/dat
 ### 4. Turn on database backups (you, 30 seconds)
 `Postgres` → **Backups** → enable scheduled backups (if your plan offers them). The server also writes its own nightly backup at 3am India time to `/data/backups` (14 days kept). Download one now and then from `GET /admin/backups/{name}`.
 
+## Launch version (no approvals needed)
+
+With ENVIRONMENT=production the server runs in **light mode** (or set LAUNCH_MODE=light). It offers only what needs no
+platform approval, and never pretends:
+
+- Hidden until their keys exist: connecting Instagram/Facebook/Google/LinkedIn, WhatsApp alerts and auto-reply, call
+  tracking, competitor watch. The dashboard asks `GET /features` and hides them.
+- **Posts are posted by hand.** They stay "scheduled"; the owner copies the caption, posts it, then taps *Mark as posted* (`POST /posts/{id}/mark-posted`).
+- **Plans are switched on by hand.** The owner pays by UPI or bank transfer; you (admin) call
+  `POST /admin/billing/activate {"business_id": 2, "plan": "growth", "days": 30}`. Calling it again extends the plan.
+  Online checkout stays closed until Razorpay keys are set.
+- Taking real payments and signing platform agreements needs a legal owner: use a parent or guardian until you are 18.
+
 ## Later, as you get each account
 | When you have… | Do this |
 |---|---|

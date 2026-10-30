@@ -13,6 +13,7 @@ from datetime import timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app import features
 from app.models import Business, Connection, Post, Review, utc_now
 
 RECENT_DAYS = 30            # Google rewards a profile that's kept active
@@ -116,14 +117,6 @@ def build_checklist(db: Session, business: Business) -> dict:
                        "into Settings -> Business profile -> Google review link.",
         ),
         dict(
-            item="Google Business Profile is connected (not mock)",
-            ok=bool(conn and conn.status == "connected" and conn.mode == "real"),
-            why_it_matters="Without a real connection, review replies and Google posts made in Lead "
-                            "Intel never actually reach Google, so they can't help your ranking.",
-            how_to_fix="Settings -> Connections -> Connect Google Business Profile, and finish Google's "
-                       "sign-in.",
-        ),
-        dict(
             item=f"A Google post went up in the last {RECENT_DAYS} days",
             ok=recent_posts > 0,
             why_it_matters="Google treats a profile that's actively updated as more trustworthy than one "
@@ -156,6 +149,16 @@ def build_checklist(db: Session, business: Business) -> dict:
                        "still showing 'none'.",
         ),
     ]
+
+    if features.on("google"):                    # until Lead Intel has Google's approval there is nothing to connect
+        items.insert(7, dict(
+            item="Google Business Profile is connected (not mock)",
+            ok=bool(conn and conn.status == "connected" and conn.mode == "real"),
+            why_it_matters="Without a real connection, review replies and Google posts made in Lead "
+                            "Intel never actually reach Google, so they can't help your ranking.",
+            how_to_fix="Settings -> Connections -> Connect Google Business Profile, and finish Google's "
+                       "sign-in.",
+        ))
 
     score = round(100 * sum(1 for c in items if c["ok"]) / len(items))
     return {"business_id": business.id, "score": score, "checks": items}

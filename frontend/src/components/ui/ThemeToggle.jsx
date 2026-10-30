@@ -8,16 +8,18 @@ import { Monitor, Moon, Sun } from 'lucide-react'
 import { motion } from 'motion/react'
 
 import { spring } from '@/animations/presets'
+import { useLanguage } from '@/hooks/useLanguage'
 import { useTheme } from '@/hooks/useTheme'
 
 const OPTIONS = [
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'system', label: 'System', icon: Monitor },
-  { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'light', labelKey: 'theme.light', icon: Sun },
+  { value: 'system', labelKey: 'theme.system', icon: Monitor },
+  { value: 'dark', labelKey: 'theme.dark', icon: Moon },
 ]
 
 export function ThemeToggle({ className }) {
   const { theme, setTheme } = useTheme()
+  const { t } = useLanguage()
 
   function onKeyDown(event) {
     const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key]
@@ -32,11 +34,11 @@ export function ThemeToggle({ className }) {
   return (
     <div
       role="radiogroup"
-      aria-label="Colour theme"
+      aria-label={t('theme.label')}
       onKeyDown={onKeyDown}
       className={clsx('inline-flex rounded-full border border-line bg-surface-sunken p-1', className)}
     >
-      {OPTIONS.map(({ value, label, icon: Icon }) => {
+      {OPTIONS.map(({ value, labelKey, icon: Icon }) => {
         const active = theme === value
         return (
           <button
@@ -44,8 +46,8 @@ export function ThemeToggle({ className }) {
             type="button"
             role="radio"
             aria-checked={active}
-            aria-label={label}
-            title={label}
+            aria-label={t(labelKey)}
+            title={t(labelKey)}
             data-value={value}
             tabIndex={active ? 0 : -1}
             onClick={() => setTheme(value)}

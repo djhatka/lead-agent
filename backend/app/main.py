@@ -14,15 +14,17 @@ from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
+from app import features
 from app.auth.access import get_current_user
 from app.auth.paywall import require_active_plan
 from app.config import settings
 from app.database import SessionLocal, init_db
 from app.production import SecurityHeaders, bootstrap_admin, startup_problems, startup_warnings
+from app.routers import features as features_router
 from app.routers import (account, agent_runs, ai, alerts, analytics, auth, auto_reply, billing, booking, businesses,
-                         competitors, connections, content, dues, email_leads, emails, followups, growth, imports,
-                         leads, live, media, platforms, renewals, reviews, roi, scheduler, seo, slow_hours, social,
-                         webhooks)
+                         calls, competitors, connections, content, dues, email_leads, emails, followups, growth,
+                         imports, leads, live, media, platforms, renewals, reviews, roi, scheduler, seo, slow_hours,
+                         social, webhooks)
 from app.site import routes as site
 from app.services import scheduler_service
 from app.services.event_bus import bus
@@ -114,8 +116,9 @@ app.mount("/static", StaticFiles(directory=site.STATIC_DIR), name="static")
 app.include_router(auth.router)
 app.include_router(webhooks.router)
 app.include_router(platforms.router)
+app.include_router(features_router.router)    # GET /features: what is really switched on (the dashboard hides the rest)
 app.include_router(billing.public)
-app.include_router(connections.public)        # Meta/Google send the owner back here after "Connect"
+app.include_router(connections.public, dependencies=[features.require("connect_apps")])   # Meta/Google send the owner back here after "Connect"
 app.include_router(media.public)              # /files/...: photos/videos the platforms fetch when we publish
 
 # LOGIN, NO PAYWALL: the billing pages (so an owner whose plan ended can pay again).
@@ -127,10 +130,21 @@ app.include_router(account.router, dependencies=[Depends(get_current_user)])  # 
 # AND a running plan or free trial (else 402 "choose a plan").
 # Inside, each ..._or_404 helper makes sure the data belongs to YOUR business.
 login_and_plan = [Depends(get_current_user), Depends(require_active_plan)]
+
+# Features that need an account or approval we may not have yet. While LAUNCH_MODE is "light" (the live server),
+# each of these answers 404 "not available yet" until its real keys are in .env: see app/features.py.
+# (On your laptop, LAUNCH_MODE is "full" and they all work, in pretend mode where keys are missing.)
+NEEDS_ACCOUNT = {connections: "connect_apps",          # Meta / Google / LinkedIn approval
+                 alerts: "whatsapp_messaging",         # WhatsApp alerts to the owner's phone
+                 auto_reply: "whatsapp_messaging",     # instant first reply on WhatsApp / Instagram / Facebook
+                 calls: "calls",                       # a call-tracking provider account (paid numbers)
+                 competitors: "competitors"}           # a paid map-data service (otherwise the numbers would be fake)
+
 for locked in (businesses, imports, leads, ai, agent_runs, analytics, social, content, scheduler, growth, reviews,
                live, connections, media, email_leads, roi, alerts, auto_reply, followups, dues, renewals, slow_hours,
-               seo, competitors, booking):
-    app.include_router(locked.router, dependencies=login_and_plan)
+               seo, competitors, booking, calls):
+    gate = [features.require(NEEDS_ACCOUNT[locked])] if locked in NEEDS_ACCOUNT else []
+    app.include_router(locked.router, dependencies=login_and_plan + gate)
 
 
 @app.get("/health", tags=["System"])

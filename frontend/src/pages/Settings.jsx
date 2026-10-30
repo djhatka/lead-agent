@@ -10,7 +10,7 @@
 import clsx from 'clsx'
 import { ExternalLink, Plug, Plus, Save, Unplug, X } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 
 import { fadeUp, stagger } from '@/animations/presets'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -24,10 +24,13 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { ConfirmButton } from '@/components/ui/ConfirmButton'
 import { QueryCard } from '@/components/ui/QueryCard'
+import { LanguageToggle } from '@/components/ui/LanguageToggle'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { InlineError } from '@/components/ui/States'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { toast } from '@/components/ui/toast'
+import { useFeatures } from '@/hooks/useFeatures'
+import { useLanguage } from '@/hooks/useLanguage'
 import { useAddSocialAccount, useBusinessProfile, useSocialAccounts, useUpdateBusiness, useUpdateSocialAccount } from '@/hooks/useSettings'
 import { count, platform, PLATFORMS, shortDate } from '@/styles/tokens'
 
@@ -208,7 +211,8 @@ const ACCOUNT_STATUS = {
 
 function AddAccount({ existing }) {
   const add = useAddSocialAccount()
-  const options = Object.keys(PLATFORMS).filter((p) => !['google', 'whatsapp'].includes(p) && !existing.includes(p))
+  // 'google' and 'whatsapp' connect via the dedicated Connections page; 'linkedin' is OAuth-only.
+  const options = Object.keys(PLATFORMS).filter((p) => !['google', 'whatsapp', 'linkedin'].includes(p) && !existing.includes(p))
   const [chosen, setChosen] = useState('')
   const [handle, setHandle] = useState('')
   const platformKey = chosen || options[0]
@@ -254,9 +258,33 @@ function AddAccount({ existing }) {
   )
 }
 
+// Platforms that connect via full OAuth redirect (not a simple toggle).
+// Clicking Connect POSTs to /connections/<platform>/start and follows the URL.
+const OAUTH_PLATFORMS = new Set(['instagram', 'facebook', 'google', 'linkedin'])
+
+function useOAuthConnect() {
+  const [loading, setLoading] = useState(null)  // platform key while in-flight
+  const start = useCallback(async (platformKey) => {
+    setLoading(platformKey)
+    try {
+      const res = await fetch(`/connections/${platformKey}/start`, { method: 'POST' })
+      if (!res.ok) throw new Error(`Server error ${res.status}`)
+      const { url } = await res.json()
+      window.location.href = url
+    } catch (err) {
+      toast({ title: `Couldn't start ${platformKey} connect`, body: err.message, tone: 'critical' })
+      setLoading(null)
+    }
+  }, [])
+  return { start, loading }
+}
+
 function Accounts() {
   const accounts = useSocialAccounts()
   const update = useUpdateSocialAccount()
+  const oauth = useOAuthConnect()
+  const features = useFeatures()
+
   const setStatus = (a, status, message) =>
     update.mutate({ id: a.id, changes: { status } }, { onSuccess: () => toast({ title: message, tone: status === 'connected' ? 'good' : 'neutral' }) })
 
@@ -269,6 +297,8 @@ function Accounts() {
               const p = platform(a.platform)
               const s = ACCOUNT_STATUS[a.status] ?? { label: a.status, tone: 'neutral' }
               const busy = update.isPending && update.variables?.id === a.id
+              const oauthBusy = oauth.loading === a.platform
+              const isOAuth = OAUTH_PLATFORMS.has(a.platform)
               return (
                 <li key={a.id} className="flex flex-wrap items-center gap-3 py-3">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-surface-sunken">
@@ -287,6 +317,12 @@ function Accounts() {
                     <ConfirmButton size="sm" icon={Unplug} question="Disconnect?" confirmLabel="Disconnect" variant="ghost" loading={busy} onConfirm={() => setStatus(a, 'disconnected', `${p.label} disconnected`)}>
                       Disconnect
                     </ConfirmButton>
+                  ) : isOAuth && !features.on('connect_apps') ? (
+                    <span className="text-xs text-ink-3">Coming soon</span>
+                  ) : isOAuth ? (
+                    <Button size="sm" variant={a.status === 'expired' ? 'primary' : 'secondary'} icon={Plug} loading={oauthBusy} onClick={() => oauth.start(a.platform)}>
+                      {a.status === 'expired' ? 'Reconnect' : 'Connect'}
+                    </Button>
                   ) : (
                     <Button size="sm" variant={a.status === 'expired' ? 'primary' : 'secondary'} icon={Plug} loading={busy} onClick={() => setStatus(a, 'connected', `${p.label} connected`)}>
                       {a.status === 'expired' ? 'Reconnect' : 'Connect'}
@@ -308,6 +344,8 @@ function Accounts() {
 }
 
 export default function Settings() {
+  const { t } = useLanguage()
+  const features = useFeatures()
   return (
     <div>
       <PageHeader />
@@ -316,9 +354,11 @@ export default function Settings() {
           <Profile />
         </motion.div>
         <div className="space-y-6">
-          <motion.div variants={fadeUp}>
-            <AutoReply />
-          </motion.div>
+          {features.on('whatsapp_messaging') && (
+            <motion.div variants={fadeUp}>
+              <AutoReply />
+            </motion.div>
+          )}
           <motion.div variants={fadeUp}>
             <FollowUpSettings />
           </motion.div>
@@ -328,11 +368,19 @@ export default function Settings() {
           <motion.div variants={fadeUp}>
             <RenewalSettings />
           </motion.div>
-          <motion.div variants={fadeUp}>
-            <PhoneAlerts />
-          </motion.div>
+          {features.on('whatsapp_messaging') && (
+            <motion.div variants={fadeUp}>
+              <PhoneAlerts />
+            </motion.div>
+          )}
           <motion.div variants={fadeUp}>
             <Accounts />
+          </motion.div>
+          <motion.div variants={fadeUp}>
+            <Card>
+              <CardHeader title={t('settings.language.title')} subtitle={t('settings.language.subtitle')} />
+              <LanguageToggle />
+            </Card>
           </motion.div>
           <motion.div variants={fadeUp}>
             <Card>

@@ -19,8 +19,8 @@ import NotFound from '@/pages/NotFound'
 const page = (load) => async () => ({ Component: (await load()).default })
 
 const leads = {
-  title: 'Enquiries',
-  subtitle: 'Every enquiry from every channel, scored by the AI',
+  titleKey: 'route.leads.title',
+  subtitleKey: 'route.leads.subtitle',
   areas: ['leads'],
 }
 
@@ -30,15 +30,15 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     errorElement: <NotFound />,
     children: [
-      { index: true, element: <Home />, handle: { title: 'Home', period: true, areas: ['analytics', 'leads', 'growth'] } },
+      { index: true, element: <Home />, handle: { titleKey: 'nav.home', period: true, areas: ['analytics', 'leads', 'growth'] } },
       { path: 'leads', element: <Leads />, handle: leads },
       { path: 'leads/:leadId', element: <Leads />, handle: leads },
       {
         path: 'sources',
         lazy: page(() => import('@/pages/Sources')),
         handle: {
-          title: 'Where customers come from',
-          subtitle: 'Which channels bring enquiries, and which bring money',
+          titleKey: 'route.sources.title',
+          subtitleKey: 'route.sources.subtitle',
           period: true,
           areas: ['analytics'],
         },
@@ -46,53 +46,59 @@ export const router = createBrowserRouter([
       {
         path: 'payments',
         lazy: page(() => import('@/pages/Payments')),
-        handle: { title: 'Payments', subtitle: 'Advances, fees and dues, paid straight to your UPI. Polite reminders included.' },
+        handle: { titleKey: 'route.payments.title', subtitleKey: 'route.payments.subtitle' },
       },
       {
         path: 'renewals',
         lazy: page(() => import('@/pages/Renewals')),
-        handle: { title: 'Renewals', subtitle: 'Memberships and services about to expire. A ready message for each, so nobody lapses.' },
+        handle: { titleKey: 'route.renewals.title', subtitleKey: 'route.renewals.subtitle' },
       },
       {
         path: 'content',
         lazy: page(() => import('@/pages/ContentCalendar')),
-        handle: { title: 'Content calendar', subtitle: 'Your next 7 days of posts. Nothing goes out until you schedule it.', areas: ['content'] },
+        handle: { titleKey: 'route.content.title', subtitleKey: 'route.content.subtitle', areas: ['content'] },
       },
       {
         path: 'content/performance',
         lazy: page(() => import('@/pages/ContentPerformance')),
-        handle: { title: "What's working", subtitle: 'Which posts bring customers and ₹, not just likes', areas: ['content'] },
+        handle: { titleKey: 'route.contentPerformance.title', subtitleKey: 'route.contentPerformance.subtitle', areas: ['content'] },
       },
       {
         path: 'results',
         lazy: page(() => import('@/pages/Results')),
-        handle: { title: 'Your results', subtitle: 'What Lead Intel did for you, month by month, in customers and ₹' },
+        handle: { titleKey: 'route.results.title', subtitleKey: 'route.results.subtitle' },
       },
       {
         path: 'weekly-review',
         lazy: page(() => import('@/pages/WeeklyReview')),
-        handle: { title: 'Weekly review', subtitle: 'What happened, what is missing, and your 3 actions', areas: ['growth'] },
+        handle: { titleKey: 'route.weeklyReview.title', subtitleKey: 'route.weeklyReview.subtitle', areas: ['growth'] },
       },
       {
         path: 'reviews',
         lazy: page(() => import('@/pages/Reviews')),
-        handle: { title: 'Reviews', subtitle: 'Your Google rating, AI-drafted replies and review requests', areas: ['reviews'] },
+        handle: { titleKey: 'route.reviews.title', subtitleKey: 'route.reviews.subtitle', areas: ['reviews'] },
       },
       {
         path: 'ai-team',
         lazy: page(() => import('@/pages/AgentRuns')),
-        handle: { title: 'AI team', subtitle: 'What each AI helper did, step by step, and why', areas: ['ai'] },
+        handle: { titleKey: 'route.aiTeam.title', subtitleKey: 'route.aiTeam.subtitle', areas: ['ai'] },
+      },
+      {
+        path: 'billing',
+        lazy: page(() => import('@/pages/Billing')),
+        handle: { titleKey: 'route.billing.title', subtitleKey: 'route.billing.subtitle' },
       },
       {
         path: 'settings/connections',
         lazy: page(() => import('@/pages/Connections')),
-        handle: { title: 'Connected apps', subtitle: 'Link your Instagram, Facebook, WhatsApp and Google so the AI can work with them' },
+        handle: { titleKey: 'route.connections.title', subtitleKey: 'route.connections.subtitle' },
       },
       {
         path: 'settings',
         lazy: page(() => import('@/pages/Settings')),
-        handle: { title: 'Settings', subtitle: 'Your business details (the AI writes from these) and social accounts', areas: ['settings'] },
+        handle: { titleKey: 'route.settings.title', subtitleKey: 'route.settings.subtitle', areas: ['settings'] },
       },
+      // Dev-only reference page: not translated.
       { path: 'style-guide', lazy: page(() => import('@/pages/StyleGuide')), handle: { title: 'Style guide', subtitle: 'Design system reference' } },
       { path: '*', element: <NotFound /> },
     ],

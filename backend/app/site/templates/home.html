@@ -113,7 +113,7 @@ Trainers who actually check your form, AC floor, open 6 am to 11 pm.
     <p class="intro">No setup fee, no training needed. If you can use WhatsApp, you can use this.</p>
     <ol class="steps">
       <li><h3>Sign up</h3><p>Tell us your business name, what you sell and your area. Your {{ s.trial_days }}-day trial starts straight away.</p></li>
-      <li><h3>Connect your accounts</h3><p>Link WhatsApp, Instagram and Google with a click, and forward your Justdial or Practo lead emails to your own private address.</p></li>
+      <li><h3>Bring in your enquiries</h3><p>{% if s.connect_apps %}Link WhatsApp, Instagram and Google with a click, and forward your Justdial or Practo lead emails to your own private address.{% else %}Forward your Justdial, Practo or IndiaMART lead emails to your own private address, add your website form, or import your old Excel list.{% endif %}</p></li>
       <li><h3>Plan your week</h3><p>Tap "Plan my week". Check the drafts, change anything you like, and approve. Enquiries start arriving in one inbox.</p></li>
     </ol>
   </div>

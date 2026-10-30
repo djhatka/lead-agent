@@ -6,7 +6,7 @@
     <div class="price">₹{{ "{:,}".format(p.price) }}<small> / month</small></div>
     {% if p.code == s.trial_plan %}<p class="trial">Your {{ s.trial_days }}-day free trial uses this plan</p>{% endif %}
     <ul>
-      {% for h in p.highlights %}<li>{{ h }}</li>{% endfor %}
+      {% for h in s.highlights_for[p.code] %}<li>{{ h }}</li>{% endfor %}
       <li>{{ p.storage_mb // 1024 }} GB for photos and videos</li>
     </ul>
     <a class="btn{% if p.code != s.trial_plan %} quiet{% endif %}" href="{{ s.signup_url }}&amp;plan={{ p.code }}">Start with {{ p.name }}</a>

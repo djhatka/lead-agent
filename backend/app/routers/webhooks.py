@@ -11,6 +11,8 @@ WhatsApp "any new messages?" every minute, WhatsApp RINGS OUR DOORBELL
     POST /webhooks/website      our website's contact form posts here
     POST /webhooks/universal    ANY other platform (Justdial, Practo, Zomato,
                                 Google Sheets, Zapier...) in one simple format
+    POST /webhooks/calltracking  the call-tracking provider (Task 38) rings here on every
+                                call event (ringing, completed, missed...)
 
 What happens when the doorbell rings:
     1. normalizer.py translates the delivery into our standard format
@@ -32,20 +34,25 @@ address: handy for testing and demos, and for a website form.
 """
 
 import json
+import re
+import secrets
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
 from app.database import get_db
+from app.models import TrackingNumber
 from app.routers.businesses import business_or_404
 from app.platforms import PLATFORMS
 from app.schemas import IncomingMessage, LeadSource, WebhookResult
 from app.integrations import meta
-from app.services import auto_reply_service, connection_service, email_leads, lead_pipeline, lead_service, normalizer
+from app.services import (auto_reply_service, calltracking_service, connection_service, email_leads, lead_pipeline,
+                          lead_service, normalizer)
 from app.services.event_bus import bus
 
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
@@ -271,3 +278,45 @@ def universal_webhook(
     if PLATFORMS[platform].connection == "api" and platform != "website":
         result.notes.append(f"Tip: {PLATFORMS[platform].name} has its own doorbell; the universal one works too.")
     return result
+
+
+def _digits(s: str) -> str:
+    return re.sub(r"\D", "", s or "")
+
+
+@router.post("/calltracking")
+async def calltracking_webhook(request: Request, db: Session = Depends(get_db)):
+    """The call-tracking provider (Task 38) rings here on every call event: ringing,
+    then completed / missed / failed. Field names vary by provider, so this reads the
+    usual aliases for each one (CallSid/call_sid, From/CallFrom, To/CallTo,
+    Status/CallStatus/DialCallStatus, Duration/CallDuration/DialCallDuration,
+    RecordingUrl, Transcript), as form-encoded (most providers) or JSON."""
+    kind = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    if kind == "application/json":
+        raw = await request.json()
+    else:
+        form = await request.form()
+        raw = {k: v for k, v in form.items() if isinstance(v, str)}
+
+    def field(*keys: str) -> str:
+        return next((str(raw[k]) for k in keys if raw.get(k)), "")
+
+    def work():
+        to = _digits(field("To", "CallTo", "to", "call_to"))
+        if not to:
+            raise HTTPException(status_code=400, detail="No 'To' number in the payload")
+        # Match on the last 10 digits, ignoring spaces/formatting/country code: a plain SQL
+        # LIKE on the stored number would miss when it's formatted with a space in the middle.
+        tn = next((t for t in db.scalars(select(TrackingNumber)) if _digits(t.number)[-10:] == to[-10:]), None)
+        if tn is None:
+            return {"ignored": True, "note": f"No business is using a tracking number ending {to[-10:]}"}
+        business = business_or_404(tn.business_id, db)
+        duration = field("Duration", "CallDuration", "DialCallDuration", "duration")
+        call = calltracking_service.record_call(
+            db, business, external_id=field("CallSid", "call_sid", "CallSID", "Sid") or secrets.token_hex(8),
+            from_number=field("From", "CallFrom", "from", "call_from"),
+            provider_status=field("Status", "CallStatus", "DialCallStatus", "status"),
+            duration_seconds=int(duration) if duration.isdigit() else 0,
+            recording_url=field("RecordingUrl", "recording_url"), transcript=field("Transcript", "transcript"))
+        return {"call_id": call.id, "status": call.status}
+    return await run_in_threadpool(work)

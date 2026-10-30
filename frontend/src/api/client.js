@@ -661,8 +661,22 @@ export function liveEventIn(event) {
 
 // ------------------------------------------------------------------ the API
 // `b` is the business id. Every call sends it as ?business_id=.
+export const ALL_FEATURES = {
+  mode: 'full', connect_apps: true, auto_posting: true, whatsapp_messaging: true,
+  google_reviews: true, payments: true, competitors: true, calls: true,
+}
+
 export const api = {
   health: () => get('/health'),
+
+  /** What this server really offers. If it can't say (older server, sample mode), assume everything. */
+  features: async () => {
+    try {
+      return { ...ALL_FEATURES, ...(await get('/features')) }
+    } catch {
+      return ALL_FEATURES
+    }
+  },
 
   /** { mode: 'mock' | 'real', model? } */
   aiStatus: () =>
@@ -745,6 +759,7 @@ export const api = {
   schedulePost: async (b, id, scheduledAt) =>
     postIn(await call('content', 'POST', `/posts/${id}/schedule`, { business: b, body: { scheduled_for: scheduledAt } })),
   unschedulePost: async (b, id) => postIn(await call('content', 'POST', `/posts/${id}/unschedule`, { business: b })),
+  markPosted: async (b, id) => postIn(await call('content', 'POST', `/posts/${id}/mark-posted`, { business: b })),
   publishNow: async (b, id) => postIn(await call('content', 'POST', `/posts/${id}/publish-now`, { business: b })),
   deletePost: (b, id) => call('content', 'DELETE', `/posts/${id}`, { business: b }),
   posts: async (b, filters) =>
@@ -910,6 +925,12 @@ export const api = {
   // Connected apps: Instagram, Facebook, WhatsApp, Google (the owner logs in on each platform's own page)
   /** Who is logged in, and their business: { user: { role, business_id… }, business } */
   me: () => get('/auth/me'),
+
+  // Billing: always the real server (no sample data: money screens must never pretend)
+  billingPlans: () => get('/billing/plans'),
+  billingStatus: (b) => get('/billing/status', { business_id: b }),
+  billingPayments: (b) => get('/billing/payments', { business_id: b }),
+  billingActivate: (body) => post('/admin/billing/activate', body),
   connections: async (b) => asList(await get('/connections', { business_id: b })),
   /** { platforms: { instagram: { label, mode: 'real' | 'mock' }… }, whatsapp_signup: { app_id, config_id, graph_version } } */
   connectionSetup: () => get('/connections/setup'),

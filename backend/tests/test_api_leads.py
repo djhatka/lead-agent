@@ -32,6 +32,26 @@ def test_bad_business_gets_422(client):
     assert r.status_code == 422
 
 
+# ----- Dashboard language (Task 39) --------------------------------------------
+def test_new_business_defaults_to_english(client):
+    r = client.post("/businesses", json={"name": "Shine Detailing", "industry": "car_detailing"})
+    assert r.status_code == 201
+    assert r.json()["language"] == "en"
+
+
+def test_switching_to_hindi_sticks(client):
+    created = client.post("/businesses", json={"name": "Namaste Salon", "industry": "Salon"}).json()
+    r = client.patch(f"/businesses/{created['id']}", json={"language": "hi"})
+    assert r.status_code == 200 and r.json()["language"] == "hi"
+    assert client.get(f"/businesses/{created['id']}").json()["language"] == "hi"
+
+
+def test_unknown_language_gets_422(client):
+    created = client.post("/businesses", json={"name": "Test Biz", "industry": "Gym"}).json()
+    r = client.patch(f"/businesses/{created['id']}", json={"language": "fr"})
+    assert r.status_code == 422
+
+
 def test_missing_business_gets_404(client):
     assert client.get("/businesses/999").status_code == 404
 

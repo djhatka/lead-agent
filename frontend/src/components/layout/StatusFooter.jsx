@@ -7,6 +7,7 @@
 import clsx from 'clsx'
 
 import { useAiStatus, useHealth } from '@/hooks/useAnalytics'
+import { useLanguage } from '@/hooks/useLanguage'
 import { useLiveFeed } from '@/hooks/useLiveFeed'
 
 function Row({ dot, pulse, label, value }) {
@@ -28,27 +29,28 @@ export function StatusFooter() {
   const health = useHealth()
   const ai = useAiStatus()
   const { status } = useLiveFeed()
+  const { t } = useLanguage()
 
   const server = health.isError
-    ? { dot: 'bg-critical', value: 'Unreachable' }
+    ? { dot: 'bg-critical', value: t('status.unreachable') }
     : health.data
-      ? { dot: 'bg-good', value: 'Online' }
-      : { dot: 'bg-warning', value: 'Checking…' }
+      ? { dot: 'bg-good', value: t('status.online') }
+      : { dot: 'bg-warning', value: t('status.checking') }
 
-  const mode = ai.data?.mode === 'real' ? { dot: 'bg-good', value: 'Claude' } : { dot: 'bg-warning', value: 'Practice' }
+  const mode = ai.data?.mode === 'real' ? { dot: 'bg-good', value: t('status.claude') } : { dot: 'bg-warning', value: t('status.practice') }
 
   const updates =
     status === 'live'
-      ? { dot: 'bg-good', value: 'Live', pulse: true }
+      ? { dot: 'bg-good', value: t('status.live'), pulse: true }
       : status === 'connecting'
-        ? { dot: 'bg-warning', value: 'Connecting…' }
-        : { dot: 'bg-ink-3', value: 'Every 30 s' }
+        ? { dot: 'bg-warning', value: t('status.connecting') }
+        : { dot: 'bg-ink-3', value: t('status.every30s') }
 
   return (
     <div className="space-y-2 rounded-control border border-line bg-surface-sunken/60 p-3">
-      <Row label="Server" dot={server.dot} value={server.value} />
-      <Row label="AI" dot={mode.dot} value={ai.data ? mode.value : '—'} />
-      <Row label="New enquiries" dot={updates.dot} pulse={updates.pulse} value={updates.value} />
+      <Row label={t('status.server')} dot={server.dot} value={server.value} />
+      <Row label={t('status.ai')} dot={mode.dot} value={ai.data ? mode.value : '—'} />
+      <Row label={t('status.newEnquiries')} dot={updates.dot} pulse={updates.pulse} value={updates.value} />
     </div>
   )
 }

@@ -30,6 +30,7 @@ import { EmptyState, ErrorState, InlineError } from '@/components/ui/States'
 import { useSources, useSummary } from '@/hooks/useAnalytics'
 import { useBusiness } from '@/hooks/useBusiness'
 import { useFollowups } from '@/hooks/useFollowups'
+import { useLanguage } from '@/hooks/useLanguage'
 import { useRenewals } from '@/hooks/useRenewals'
 import { useReports } from '@/hooks/useGrowth'
 import { useLeads } from '@/hooks/useLeads'
@@ -41,6 +42,7 @@ const linkStyle = 'inline-flex items-center gap-1 text-sm font-semibold text-bra
 
 function Numbers({ days }) {
   const summary = useSummary(days)
+  const { t } = useLanguage()
   const ref = useRef(null)
 
   useGSAP(
@@ -66,29 +68,31 @@ function Numbers({ days }) {
   if (summary.isError) return <ErrorState error={summary.error} onRetry={() => summary.refetch()} />
 
   const s = summary.data
-  const before = `vs the ${days} days before`
+  const before = t('home.stat.vsDaysBefore', { n: days })
   return (
     <div
       ref={ref}
       className={clsx('grid grid-cols-2 gap-3 transition-opacity duration-200 sm:gap-4 xl:grid-cols-4', summary.isPlaceholderData && 'opacity-60')}
     >
-      <StatTile label="Enquiries" icon={Users} value={s.leads} change={s.leads_change_pct} hint={before} />
-      <StatTile label="Sales" icon={ShoppingBag} value={s.won} hint={`${s.conversion_pct}% of enquiries bought`} />
+      <StatTile label={t('home.stat.enquiries')} icon={Users} value={s.leads} change={s.leads_change_pct} hint={before} />
+      <StatTile label={t('home.stat.sales')} icon={ShoppingBag} value={s.won} hint={t('home.stat.boughtPct', { pct: s.conversion_pct })} />
       <StatTile
-        label="Revenue"
+        label={t('home.stat.revenue')}
         icon={IndianRupee}
         value={s.revenue}
         // In full up to ₹99,999 (₹62,900); above that it's ₹10.9 L so it fits a phone, with the full amount below.
         format={(n) => inr(Math.round(n), { short: s.revenue >= 100_000 })}
         change={s.revenue_change_pct}
-        hint={[s.revenue >= 100_000 && inr(s.revenue), s.avg_job_value && `avg sale ${inr(s.avg_job_value)}`].filter(Boolean).join(' · ')}
+        hint={[s.revenue >= 100_000 && inr(s.revenue), s.avg_job_value && t('home.stat.avgSale', { amount: inr(s.avg_job_value) })]
+          .filter(Boolean)
+          .join(' · ')}
       />
       <StatTile
-        label="Typical reply time"
+        label={t('home.stat.replyTime')}
         icon={Clock}
         value={s.median_reply_minutes}
         format={minutes}
-        hint={`${s.replied_within_5_min_pct}% answered within 5 min`}
+        hint={t('home.stat.repliedWithin5min', { pct: s.replied_within_5_min_pct })}
       />
     </div>
   )
@@ -97,20 +101,21 @@ function Numbers({ days }) {
 function HotLeads() {
   const hot = useLeads({ priority: 'hot', sort: 'score', page_size: 5 })
   const total = hot.data?.total ?? 0
+  const { t } = useLanguage()
 
   return (
     <Card className="h-full">
       <CardHeader
         title={
           <span className="inline-flex items-center gap-2">
-            <Flame aria-hidden className="size-5 text-accent" /> Call these first
+            <Flame aria-hidden className="size-5 text-accent" /> {t('home.callFirst')}
           </span>
         }
-        subtitle="Hot enquiries, most likely to buy at the top"
+        subtitle={t('home.hotEnquiriesSubtitle')}
         action={
           total > 5 && (
             <Link to="/leads?priority=hot&sort=score" className={linkStyle}>
-              All {total} <ArrowRight aria-hidden className="size-4" />
+              {t('home.all', { n: total })} <ArrowRight aria-hidden className="size-4" />
             </Link>
           )
         }
@@ -130,8 +135,8 @@ function HotLeads() {
       ) : hot.isError ? (
         <InlineError error={hot.error} onRetry={() => hot.refetch()} />
       ) : total === 0 ? (
-        <EmptyState icon={Flame} title="No hot enquiries right now" className="py-6">
-          New ones pop up here the moment the AI flags them.
+        <EmptyState icon={Flame} title={t('home.noHotEnquiries')} className="py-6">
+          {t('home.noHotEnquiriesBody')}
         </EmptyState>
       ) : (
         <motion.ul variants={stagger(0.05)} initial="hidden" animate="show" className="-mx-2 divide-y divide-line">
@@ -165,6 +170,7 @@ function HotLeads() {
 function FollowUps() {
   const query = useFollowups()
   const [showAll, setShowAll] = useState(false)
+  const { t } = useLanguage()
   if (query.isPending) return <Skeleton className="h-40 rounded-card" />
   if (query.isError) return null // an older server without follow-up reminders
   const { items, count, settings } = query.data
@@ -176,22 +182,22 @@ function FollowUps() {
       <CardHeader
         title={
           <span className="inline-flex items-center gap-2">
-            <BellRing aria-hidden className="size-5 text-accent" /> Follow up today
+            <BellRing aria-hidden className="size-5 text-accent" /> {t('home.followUpToday')}
             {count > 0 && <span className="num rounded-full bg-accent-soft px-2 text-sm text-accent-ink">{count}</span>}
           </span>
         }
-        subtitle={`Enquiries that went quiet for ${settings.after_days} day${settings.after_days === 1 ? '' : 's'} or more. Most sales are won on the follow-up.`}
+        subtitle={t('home.followUpSubtitle', { days: settings.after_days, plural: settings.after_days === 1 ? '' : 's' })}
         action={
           count > 5 && (
             <button type="button" onClick={() => setShowAll((v) => !v)} className={clsx(linkStyle, 'cursor-pointer')}>
-              {showAll ? 'Show fewer' : `All ${count}`} <ArrowRight aria-hidden className="size-4" />
+              {showAll ? t('home.showFewer') : t('home.all', { n: count })} <ArrowRight aria-hidden className="size-4" />
             </button>
           )
         }
       />
       {count === 0 ? (
         <p className="flex items-center gap-2 text-sm text-ink-2">
-          <CheckCircle2 aria-hidden className="size-4 text-good" /> All caught up. Nobody is waiting for a follow-up.
+          <CheckCircle2 aria-hidden className="size-4 text-good" /> {t('home.allCaughtUp')}
         </p>
       ) : (
         <motion.ul variants={stagger(0.04)} initial="hidden" animate="show" className="-mx-2 divide-y divide-line">
@@ -206,7 +212,7 @@ function FollowUps() {
                   <p className="mt-0.5 text-sm text-ink-2">{r.reason}</p>
                   <ChannelBadge source={r.source} className="mt-1 text-xs" />
                 </div>
-                <span className="shrink-0 text-sm font-semibold text-brand group-hover:underline">Follow up</span>
+                <span className="shrink-0 text-sm font-semibold text-brand group-hover:underline">{t('home.followUp')}</span>
               </Link>
             </motion.li>
           ))}
@@ -218,6 +224,7 @@ function FollowUps() {
 
 function RenewalsDue() {
   const query = useRenewals()
+  const { t } = useLanguage()
   if (query.isPending) return <Skeleton className="h-40 rounded-card" />
   if (query.isError) return null // an older server without renewal reminders
   const { items, count, settings } = query.data
@@ -228,14 +235,14 @@ function RenewalsDue() {
       <CardHeader
         title={
           <span className="inline-flex items-center gap-2">
-            <RefreshCw aria-hidden className="size-5 text-accent" /> Renewals
+            <RefreshCw aria-hidden className="size-5 text-accent" /> {t('home.renewals')}
             <span className="num rounded-full bg-accent-soft px-2 text-sm text-accent-ink">{count}</span>
           </span>
         }
-        subtitle={`Memberships or services expiring within ${settings.remind_days_before} days`}
+        subtitle={t('home.renewalsSubtitle', { days: settings.remind_days_before })}
         action={
           <a href="/renewals" className={clsx(linkStyle, 'cursor-pointer')}>
-            View all <ArrowRight aria-hidden className="size-4" />
+            {t('home.viewAll')} <ArrowRight aria-hidden className="size-4" />
           </a>
         }
       />
@@ -247,7 +254,7 @@ function RenewalsDue() {
                 <p className="truncate font-semibold text-ink group-hover:text-brand">{r.customer}</p>
                 <p className="mt-0.5 text-sm text-ink-2">{r.reason}</p>
               </div>
-              <span className="shrink-0 text-sm font-semibold text-brand group-hover:underline">Renew</span>
+              <span className="shrink-0 text-sm font-semibold text-brand group-hover:underline">{t('home.renew')}</span>
             </a>
           </motion.li>
         ))}
@@ -260,10 +267,11 @@ function Highlights({ days }) {
   const summary = useSummary(days)
   const sources = useSources(days)
   const lines = summary.data ? deriveHighlights(summary.data, sources.data ?? []) : []
+  const { t } = useLanguage()
 
   return (
     <Card className="h-full">
-      <CardHeader title="What happened" subtitle={`The last ${days} days in plain words`} />
+      <CardHeader title={t('home.whatHappened')} subtitle={t('home.lastNDaysPlainWords', { n: days })} />
       {summary.isPending ? (
         <div className="space-y-3">
           <Skeleton className="h-4 w-full" />
@@ -273,7 +281,7 @@ function Highlights({ days }) {
       ) : summary.isError ? (
         <InlineError error={summary.error} onRetry={() => summary.refetch()} />
       ) : lines.length === 0 ? (
-        <p className="text-sm text-ink-2">Nothing to report yet. Highlights appear once enquiries come in.</p>
+        <p className="text-sm text-ink-2">{t('home.nothingToReport')}</p>
       ) : (
         <ul className="space-y-3">
           {lines.map((line) => (
@@ -291,20 +299,21 @@ function Highlights({ days }) {
 function Actions() {
   const reports = useReports(1)
   const report = reports.data?.[0]
+  const { t } = useLanguage()
 
   return (
     <Card>
       <CardHeader
         title={
           <span className="inline-flex items-center gap-2">
-            <ListChecks aria-hidden className="size-5 text-brand" /> This week's 3 actions
+            <ListChecks aria-hidden className="size-5 text-brand" /> {t('home.threeActions')}
           </span>
         }
-        subtitle={report ? `From your weekly review of ${shortDate(report.created_at)}` : 'From your weekly review'}
+        subtitle={report ? t('home.fromWeeklyReview', { date: shortDate(report.created_at) }) : t('home.fromWeeklyReviewPlain')}
         action={
           report && (
             <Link to="/weekly-review" className={linkStyle}>
-              Full review <ArrowRight aria-hidden className="size-4" />
+              {t('home.fullReview')} <ArrowRight aria-hidden className="size-4" />
             </Link>
           )
         }
@@ -318,8 +327,17 @@ function Actions() {
       ) : reports.isError ? (
         <InlineError error={reports.error} onRetry={() => reports.refetch()} />
       ) : !report ? (
-        <EmptyState icon={ListChecks} title="No weekly review yet" className="py-6" action={<Link to="/weekly-review" className={linkStyle}>Run your first review <ArrowRight aria-hidden className="size-4" /></Link>}>
-          The AI looks at your week and picks the 3 things that will bring the most customers.
+        <EmptyState
+          icon={ListChecks}
+          title={t('home.noWeeklyReview')}
+          className="py-6"
+          action={
+            <Link to="/weekly-review" className={linkStyle}>
+              {t('home.runFirstReview')} <ArrowRight aria-hidden className="size-4" />
+            </Link>
+          }
+        >
+          {t('home.weeklyReviewBody')}
         </EmptyState>
       ) : (
         <ol className="grid gap-3 md:grid-cols-3">
@@ -332,7 +350,7 @@ function Actions() {
               <WhyNote className="text-[13px]">{action.why}</WhyNote>
               {action.link && (
                 <Link to={action.link} className={clsx(linkStyle, 'mt-auto pt-1')}>
-                  Do it now <ArrowRight aria-hidden className="size-4" />
+                  {t('home.doItNow')} <ArrowRight aria-hidden className="size-4" />
                 </Link>
               )}
             </li>
@@ -346,11 +364,15 @@ function Actions() {
 export default function Home() {
   const { days } = usePeriod()
   const { business } = useBusiness()
-  const [today] = useState(() => new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: IST }))
+  const { t, lang } = useLanguage()
+  const today = new Date().toLocaleDateString(lang === 'hi' ? 'hi-IN' : 'en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: IST })
 
   return (
     <div>
-      <PageHeader title={greeting()} subtitle={`${today} · here's how ${business?.name ?? 'your business'} is doing`} />
+      <PageHeader
+        title={greeting(lang)}
+        subtitle={`${today} · ${t('home.subtitle', { name: business?.name ?? (lang === 'hi' ? 'आपका बिज़नेस' : 'your business') })}`}
+      />
       <motion.div variants={stagger(0.08)} initial="hidden" animate="show" className="space-y-6">
         <motion.div variants={fadeUp}>
           <Numbers days={days} />

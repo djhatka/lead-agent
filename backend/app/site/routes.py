@@ -30,6 +30,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import features
 from app.config import settings
 from app.database import get_db
 from app.models import Booking, Business, ContactMessage, Due
@@ -74,6 +75,13 @@ def site_info() -> dict:
     email = settings.support_email
     plans = list(PLANS.values())
     trial = PLANS[TRIAL_PLAN]
+    faq = list(FAQ)
+    if features.is_light() and not features.on("connect_apps"):
+        # Launch version: be straight about what is not connected yet
+        faq = [(q, ("Enquiries from WhatsApp, Instagram, Justdial, Practo and similar sites come in through their lead emails, "
+                    "your website form and by adding or importing them yourself. Direct connections to WhatsApp, Instagram, "
+                    "Facebook and Google are coming soon.") if q.lower().startswith(("which", "what platforms", "does it work", "what does it connect")) and "connect" in a.lower() else a)
+               for q, a in faq]
     schema = {"@context": "https://schema.org", "@type": "SoftwareApplication", "name": settings.app_name,
               "applicationCategory": "BusinessApplication", "operatingSystem": "Web", "url": site,
               "offers": [{"@type": "Offer", "name": p.name, "price": p.price, "priceCurrency": "INR"} for p in plans]}
@@ -91,7 +99,8 @@ def site_info() -> dict:
         "legal_city": settings.legal_city, "updated": settings.policies_updated,
         "trial_days": settings.trial_days, "trial_plan": TRIAL_PLAN, "trial_name": trial.name,
         "grace_days": settings.payment_grace_days, "plans": plans, "cheapest": min(p.price for p in plans),
-        "faq": FAQ, "schema_json": json.dumps(schema).replace("</", "<\\/"),
+        "faq": faq, "highlights_for": {p.code: features.highlights(p) for p in plans},
+        "connect_apps": features.on("connect_apps"), "whatsapp": features.on("whatsapp_messaging"), "schema_json": json.dumps(schema).replace("</", "<\\/"),
         "css_version": int((STATIC_DIR / "site.css").stat().st_mtime),
     }
 

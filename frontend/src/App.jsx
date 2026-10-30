@@ -9,6 +9,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { RouterProvider } from 'react-router'
 
 import { auth } from '@/api/client'
+import { LanguageProvider } from '@/hooks/useLanguage'
 import Login from '@/pages/Login'
 import Signup from '@/pages/Signup'
 import { router } from '@/routes'
@@ -23,6 +24,11 @@ export default function App() {
     if (!token) queryClient.clear()
   }, [token, queryClient])
 
-  if (token) return <RouterProvider router={router} />
+  if (token)
+    return (
+      <LanguageProvider>
+        <RouterProvider router={router} />
+      </LanguageProvider>
+    )
   return screen === 'signup' ? <Signup onLogin={() => setScreen('login')} /> : <Login onSignup={() => setScreen('signup')} />
 }

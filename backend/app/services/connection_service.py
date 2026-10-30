@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import vault
 from app.config import settings
-from app.integrations import google, instagram, meta
+from app.integrations import google, instagram, linkedin, meta
 from app.integrations.base import IntegrationError, NeedsReconnect
 from app.models import Business, Connection, Review, SocialAccount
 from app.schemas import ReviewCreate
@@ -36,8 +36,9 @@ from app.services import billing_service
 from app.services.event_bus import bus
 
 logger = logging.getLogger("connections")
-OAUTH_PLATFORMS = ("instagram", "facebook", "google")
-LABELS = {"whatsapp": "WhatsApp", "instagram": "Instagram", "facebook": "Facebook Page", "google": "Google Business Profile"}
+OAUTH_PLATFORMS = ("instagram", "facebook", "google", "linkedin")
+LABELS = {"whatsapp": "WhatsApp", "instagram": "Instagram", "facebook": "Facebook Page",
+          "google": "Google Business Profile", "linkedin": "LinkedIn Company Page"}
 
 
 class ConnectError(Exception):
@@ -54,7 +55,8 @@ def _utc(dt: Optional[datetime]) -> Optional[datetime]:
 
 def is_real(platform: str) -> bool:
     return {"whatsapp": settings.meta_enabled, "facebook": settings.meta_enabled,
-            "instagram": settings.instagram_enabled, "google": settings.google_enabled}[platform]
+            "instagram": settings.instagram_enabled, "google": settings.google_enabled,
+            "linkedin": settings.linkedin_enabled}[platform]
 
 
 def redirect_uri(platform: str) -> str:
@@ -115,7 +117,8 @@ def token(db: Session, conn: Connection) -> str:
 def mark_problem(db: Session, conn: Connection, problem: str) -> None:
     conn.status, conn.problem = "needs_reconnect", problem[:500]
     db.commit()
-    bus.publish(conn.business_id, "connection.problem", f"{LABELS[conn.platform]} needs reconnecting ⚠️",
+    label = LABELS.get(conn.platform, conn.platform.title())
+    bus.publish(conn.business_id, "connection.problem", f"{label} needs reconnecting ⚠️",
                 f"{problem[:120]} Open Settings → Connections and click Connect again.",
                 {"connection_id": conn.id, "platform": conn.platform})
 
@@ -189,7 +192,8 @@ def start(business_id: int, user_id: int, platform: str) -> str:
     if not is_real(platform):
         # Mock: skip the platform and come straight back with a pretend code
         return f"{redirect_uri(platform)}?code=mock&state={state}"
-    builder = {"instagram": instagram.login_url, "facebook": meta.pages_login_url, "google": google.login_url}
+    builder = {"instagram": instagram.login_url, "facebook": meta.pages_login_url,
+               "google": google.login_url, "linkedin": linkedin.login_url}
     return builder[platform](state, redirect_uri(platform))
 
 
@@ -207,7 +211,7 @@ def finish_oauth(db: Session, platform: str, code: str, state: str) -> list[Conn
         if not is_real(platform):
             return [_mock_connect(db, business, platform)]
         return {"instagram": _connect_instagram, "facebook": _connect_facebook,
-                "google": _connect_google}[platform](db, business, code)
+                "google": _connect_google, "linkedin": _connect_linkedin}[platform](db, business, code)
     except IntegrationError as problem:
         raise ConnectError(str(problem))
     except billing_service.PlanLimit as problem:
@@ -219,7 +223,8 @@ def _mock_connect(db: Session, business: Business, platform: str) -> Connection:
                                                      SocialAccount.platform == platform))
     handle = existing.handle if existing else business.name.lower().replace(" ", "")
     display = {"instagram": f"@{handle}", "facebook": business.name,
-               "google": f"{business.name}, {business.city}"}[platform]
+               "google": f"{business.name}, {business.city}",
+               "linkedin": business.name}[platform]
     return _save(db, business.id, platform, f"mock_{platform}_{business.id}", display, "mock",
                  access="mock-key", handle=handle, followers=existing.followers if existing else 0)
 
@@ -256,6 +261,23 @@ def _connect_google(db: Session, business: Business, code: str) -> list[Connecti
     return [_save(db, business.id, "google", place["name"], place["title"], "real",
                   access=keys["access_token"], refresh=keys["refresh_token"],
                   expires_in=int(keys.get("expires_in", 3600)), handle=place["title"]) for place in places[:1]]
+
+
+def _connect_linkedin(db: Session, business: Business, code: str) -> list[Connection]:
+    keys = linkedin.exchange_code(code, redirect_uri("linkedin"))
+    token = keys["access_token"]
+    member = linkedin.me(token)
+    member_urn = f"urn:li:person:{member.get('id', '')}"
+    pages = linkedin.company_pages(token, member_urn)
+    if not pages:
+        raise ConnectError("No LinkedIn Company Page was found. Make sure you are an administrator of a company page.")
+    saved = []
+    for page in pages[:1]:                     # connect the first page (owner can reconnect to pick another)
+        saved.append(_save(db, business.id, "linkedin", page["id"], page["name"], "real",
+                           access=token, expires_in=linkedin.TOKEN_SECONDS,
+                           handle=page["name"], followers=page.get("followers", 0),
+                           extra={"member_urn": member_urn}))
+    return saved
 
 
 def finish_whatsapp(db: Session, business_id: int, code: str, waba_id: str = "", phone_number_id: str = "") -> Connection:

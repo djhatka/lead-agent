@@ -1,156 +1,223 @@
 """
-Publishers: the ONE place that (1) publishes a post and (2) reads its numbers back.
+Platform publishers: the one place that knows how to turn a scheduled Post into a real
+post on each platform.
 
-    MockPublisher       accounts not connected for real (or mock connections):
-                        pretends to publish and invents believable numbers
-    InstagramPublisher  a connected Instagram (photo/reel/story via a public media link)
-    FacebookPublisher   a connected Facebook Page (photo, video or text)
-    GooglePublisher     a connected Google Business Profile ("Updates" posts)
+    get_publisher(account) → an object with:
+        .publish(post, account)     → the platform's id for the new post (str)
+        .fetch_stats(post, account) → {"reach": …, "likes": …, …}
 
-    publisher.publish(post, account)     → the platform's id for the new post
-    publisher.fetch_stats(post, account) → {"reach": ..., "likes": ..., ...}
+Which publisher you get:
+    the account has a REAL connection          → that platform's publisher (Instagram, Facebook, Google, LinkedIn)
+    no real connection, full mode (laptop)     → MockPublisher: pretend ("practice mode"), ids start with "mock_"
+    no real connection, light mode (live site) → ManualPublisher: refuses, because nothing would really be posted.
+                                                 The owner posts it by hand and taps "Mark as posted".
 
-get_publisher() picks the right one by looking up the account's connection.
+PublishError → something the owner can see and fix (no photo, key expired…). The post is
+               marked "failed" with this message.
 """
 
-import random
+import logging
+import math
+from abc import ABC, abstractmethod
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
-from sqlalchemy.orm import object_session
+from sqlalchemy.orm import Session, object_session
 
-from app.integrations import google, instagram, meta
+from app import features
 from app.integrations.base import IntegrationError
 from app.models import Post, SocialAccount
+from app.services import connection_service as connections
+from app.services import media_service
+
+logger = logging.getLogger("publishers")
 
 
 class PublishError(Exception):
-    """Publishing failed, e.g. the platform rejected the post or was down."""
+    """Shown to the owner. Keep messages short and actionable."""
 
 
-def _caption(post: Post) -> str:
-    tags = " ".join(f"#{t}" for t in (post.hashtags or []))
-    return f"{post.caption}\n\n{tags}".strip() if tags else post.caption
+class _BasePublisher(ABC):
+    def __init__(self, db: Session = None):
+        self.db = db
 
-
-class MockPublisher:
-    """Pretend platform. Deterministic: the same post always gets the same numbers."""
-
-    # How much each format / message type tends to reach (same idea as the demo data)
-    KIND_REACH = {"reel": 2.0, "video": 1.5, "carousel": 1.2, "photo": 1.0, "text": 0.6, "story": 0.5}
-    PILLAR_REACH = {"trend": 2.2, "transformation": 1.6, "festival": 1.1, "offer": 1.0,
-                    "tips": 0.9, "behind_the_scenes": 0.8, "testimonial": 0.7}
-
+    @abstractmethod
     def publish(self, post: Post, account: SocialAccount) -> str:
-        if post.kind != "story" and not post.caption.strip():
-            raise PublishError("The post has no caption")
-        return f"mock_{account.platform}_{post.id}"
+        """Return the external post ID / URN."""
 
     def fetch_stats(self, post: Post, account: SocialAccount) -> dict:
-        r = random.Random(post.id)                              # same post → same "final" numbers
-        followers = account.followers or 300
-        final_reach = (followers * r.uniform(0.15, 0.4) * self.KIND_REACH.get(post.kind, 1.0)
-                       * self.PILLAR_REACH.get(post.pillar, 1.0) * r.uniform(0.6, 1.5))
-
-        # Real posts get most of their reach in the first 1-3 days, then slow down
-        published = post.published_at if post.published_at.tzinfo else post.published_at.replace(tzinfo=timezone.utc)
-        hours = max(0.0, (datetime.now(timezone.utc) - published).total_seconds() / 3600)
-        share = 1 - 0.5 ** (hours / 24)                         # 50% after 1 day, 75% after 2...
-        reach = int(final_reach * share)
-        return {
-            "reach": reach,
-            "likes": int(reach * r.uniform(0.03, 0.08)),
-            "comments": int(reach * r.uniform(0.002, 0.01)),
-            "shares": int(reach * r.uniform(0.001, 0.006)),
-            "saves": int(reach * r.uniform(0.002, 0.01)),
-            "profile_visits": int(reach * r.uniform(0.01, 0.03)),
-            "link_clicks": int(reach * r.uniform(0.002, 0.01)),
-        }
+        """Return a dict of stat fields that should be updated on the Post."""
+        return {}
 
 
-class _Real:
-    """Shared by the real publishers: the connection's key + 'reconnect' handling."""
+# ---------------------------------------------------------------------------
+# Practice mode (laptop) and manual mode (live site, nothing connected)
+# ---------------------------------------------------------------------------
+class MockPublisher(_BasePublisher):
+    """Pretends to publish, and invents numbers that grow over the first days, like a real post's do."""
 
-    def __init__(self, conn):
-        self.conn = conn
+    SHORT = {"instagram": "ig", "facebook": "fb", "google": "google", "linkedin": "li"}
 
-    def _run(self, action, *args):
-        from app.services import connection_service as connections
-        db = object_session(self.conn)
-        try:
-            return connections.guarded(db, self.conn, action, *args)
-        except IntegrationError as problem:
-            raise PublishError(str(problem)) from problem
+    def publish(self, post: Post, account: SocialAccount) -> str:
+        return f"mock_{self.SHORT.get(post.platform, post.platform)}_{post.id}"
 
-    def _key(self) -> str:
-        from app.services import connection_service as connections
-        try:
-            return connections.token(object_session(self.conn), self.conn)
-        except IntegrationError as problem:
-            raise PublishError(str(problem)) from problem
+    def fetch_stats(self, post: Post, account: SocialAccount) -> dict:
+        published = post.published_at or datetime.now(timezone.utc)
+        if published.tzinfo is None:
+            published = published.replace(tzinfo=timezone.utc)
+        hours = max(1.0, (datetime.now(timezone.utc) - published).total_seconds() / 3600)
+        growth = 1 - math.exp(-hours / 36)                     # fast at first, then it levels off
+        base = 600 + (post.id or 0) * 37 % 900                 # a steady "size" per post
+        reach = max(1, int(base * growth))
+        return {"reach": reach, "likes": int(reach * 0.08), "comments": int(reach * 0.01),
+                "shares": int(reach * 0.005), "saves": int(reach * 0.015),
+                "profile_visits": int(reach * 0.02), "link_clicks": int(reach * 0.01)}
 
 
-def _media(post: Post) -> str:
-    """The post's photo/video link. Platforms fetch it themselves, so it must be a
-    public https address, not this laptop (127.0.0.1 / localhost)."""
-    from app.services.media_service import link_for
-    link = link_for(post, object_session(post))
-    if link and (not link.startswith("https://") or "://localhost" in link or "://127.0.0.1" in link):
-        raise PublishError("The platforms can't fetch photos from your computer. Put the server online "
-                           "(set PUBLIC_API_URL to its https address) and try again.")
+class ManualPublisher(_BasePublisher):
+    """Live site with this platform not connected: never pretend a post went out."""
+
+    def publish(self, post: Post, account: SocialAccount) -> str:
+        raise PublishError(features.MANUAL_POST_MESSAGE)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for the real publishers
+# ---------------------------------------------------------------------------
+LOCAL_HOSTS = ("localhost", "127.0.0.1", "0.0.0.0", "::1")
+
+
+def _media_link(db: Session, post: Post, platform_label: str) -> str:
+    """The post's photo/video link, checked: Instagram/Facebook/Google fetch it from the internet."""
+    link = media_service.link_for(post, db)
+    host = (urlparse(link).hostname or "") if link else ""
+    if link and (host in LOCAL_HOSTS or host.startswith(("192.168.", "10."))):
+        raise PublishError(f"{platform_label} can't fetch photos stored on this computer. Set PUBLIC_API_URL to "
+                           f"your live https address first, then reschedule the post.")
     return link
 
 
-class InstagramPublisher(_Real):
+def _with_hashtags(post: Post) -> str:
+    caption = post.caption
+    if post.hashtags:
+        caption += "\n" + " ".join(f"#{h.lstrip('#')}" for h in post.hashtags)
+    return caption
+
+
+def _is_video(post: Post, link: str) -> bool:
+    return post.kind in ("reel", "video") or link.lower().split("?")[0].endswith((".mp4", ".mov"))
+
+
+def _call(db: Session, conn, action, *args):
+    """Run a platform call; turn the platform's errors into messages the owner can read."""
+    try:
+        return connections.guarded(db, conn, action, *args)
+    except IntegrationError as problem:
+        raise PublishError(str(problem)) from problem
+
+
+# ---------------------------------------------------------------------------
+# Real publishers
+# ---------------------------------------------------------------------------
+class _InstagramPublisher(_BasePublisher):
     def publish(self, post: Post, account: SocialAccount) -> str:
-        return self._run(instagram.publish, self.conn.external_id, self._key(), post.kind, _caption(post), _media(post))
+        from app.integrations import instagram
+        conn = connections.for_account(self.db, account)
+        link = _media_link(self.db, post, "Instagram")
+        if not link:
+            raise PublishError("Instagram needs a photo or video. Add one and reschedule.")
+        return _call(self.db, conn, instagram.publish, conn.external_id, connections.token(self.db, conn),
+                     post.kind, _with_hashtags(post), link)
 
     def fetch_stats(self, post: Post, account: SocialAccount) -> dict:
-        return self._run(instagram.media_stats, post.external_id, self._key(), post.kind)
+        from app.integrations import instagram
+        conn = connections.for_account(self.db, account)
+        if conn is None or not post.external_id or post.external_id.startswith("mock_"):
+            return {}
+        try:
+            return _call(self.db, conn, instagram.media_stats, post.external_id, connections.token(self.db, conn),
+                         post.kind)
+        except PublishError:
+            return {}
 
 
-class FacebookPublisher(_Real):
+class _FacebookPublisher(_BasePublisher):
     def publish(self, post: Post, account: SocialAccount) -> str:
-        if not post.caption.strip() and not post.media_url:
-            raise PublishError("The post has no caption")
-        return self._run(meta.page_publish, self.conn.external_id, self._key(), _caption(post), _media(post),
-                         post.kind in ("reel", "video"))
+        from app.integrations import meta
+        conn = connections.for_account(self.db, account)
+        link = _media_link(self.db, post, "Facebook")
+        return _call(self.db, conn, meta.page_publish, conn.external_id, connections.token(self.db, conn),
+                     _with_hashtags(post), link, _is_video(post, link))
 
     def fetch_stats(self, post: Post, account: SocialAccount) -> dict:
-        return self._run(meta.page_post_stats, post.external_id, self._key())
+        from app.integrations import meta
+        conn = connections.for_account(self.db, account)
+        if conn is None or not post.external_id or post.external_id.startswith("mock_"):
+            return {}
+        try:
+            return _call(self.db, conn, meta.page_post_stats, post.external_id, connections.token(self.db, conn))
+        except PublishError:
+            return {}
 
 
-class GooglePublisher(_Real):
+class _GooglePublisher(_BasePublisher):
     def publish(self, post: Post, account: SocialAccount) -> str:
-        if not post.caption.strip():
-            raise PublishError("The post has no caption")
-        return self._run(google.create_post, self.conn.external_id, self._key(), post.caption, _media(post))
+        from app.integrations import google
+        conn = connections.for_account(self.db, account)
+        link = _media_link(self.db, post, "Google")
+        return _call(self.db, conn, google.create_post, conn.external_id, connections.token(self.db, conn),
+                     post.caption, link)
+
+
+class _LinkedInPublisher(_BasePublisher):
+    def publish(self, post: Post, account: SocialAccount) -> str:
+        from app.integrations import linkedin
+        conn = connections.for_account(self.db, account)
+        link = _media_link(self.db, post, "LinkedIn")
+        return _call(self.db, conn, linkedin.publish, connections.token(self.db, conn), conn.external_id,
+                     post.caption, link)
 
     def fetch_stats(self, post: Post, account: SocialAccount) -> dict:
-        return {}                     # Google doesn't give per-post numbers through this API
+        from app.integrations import linkedin
+        conn = connections.for_account(self.db, account)
+        if conn is None or not post.external_id or post.external_id.startswith("mock_"):
+            return {}
+        try:
+            return _call(self.db, conn, linkedin.post_stats, post.external_id, connections.token(self.db, conn))
+        except PublishError:
+            return {}
 
 
-REAL = {"instagram": InstagramPublisher, "facebook": FacebookPublisher, "google": GooglePublisher}
+class _ReconnectPublisher(_BasePublisher):
+    """The platform stopped accepting our key: say so, instead of trying and failing."""
+
+    def __init__(self, db: Session, label: str):
+        super().__init__(db)
+        self.label = label
+
+    def publish(self, post: Post, account: SocialAccount) -> str:
+        raise PublishError(f"{self.label} needs reconnecting. Go to Settings → Connections and click Connect again.")
 
 
-def get_publisher(account: SocialAccount):
-    """The real publisher for an account connected for real; otherwise the mock."""
-    db = object_session(account)
-    if db is not None and account.connected and account.platform in REAL:
-        from app.services import connection_service as connections
-        conn = connections.for_account(db, account)
-        if conn is not None and conn.mode == "real":
-            if conn.status != "connected":
-                return _NeedsReconnect(account.platform)
-            return REAL[account.platform](conn)
-    return MockPublisher()
+_REAL = {
+    "instagram": _InstagramPublisher,
+    "facebook": _FacebookPublisher,
+    "google": _GooglePublisher,
+    "linkedin": _LinkedInPublisher,
+}
 
 
-class _NeedsReconnect:
-    def __init__(self, platform: str):
-        self.platform = platform
-
-    def publish(self, post, account):
-        raise PublishError(f"Your {self.platform} connection needs reconnecting (Settings → Connections)")
-
-    def fetch_stats(self, post, account):
-        raise PublishError("connection needs reconnecting")
+def get_publisher(account: SocialAccount, db: Session = None) -> _BasePublisher:
+    """Return the right publisher for this social account (see the top of this file)."""
+    _db = db or object_session(account)
+    if _db is None:
+        raise PublishError("Database session not available for publisher")
+    real = _REAL.get(account.platform)
+    conn = connections.for_account(_db, account)
+    if real is not None and conn is not None and conn.mode == "real":
+        if conn.status != "connected":
+            return _ReconnectPublisher(_db, connections.LABELS.get(account.platform, account.platform.title()))
+        return real(_db)
+    if features.is_light():
+        return ManualPublisher(_db)
+    return MockPublisher(_db)

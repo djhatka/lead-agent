@@ -8,6 +8,7 @@
      come first, so the owner just checks their UPI app and confirms.
 */
 import clsx from 'clsx'
+import { useFeatures } from '@/hooks/useFeatures'
 import { AlertTriangle, CheckCircle2, Hourglass, IndianRupee, Plus, Wallet } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
@@ -80,6 +81,7 @@ function List({ status }) {
 }
 
 export default function Payments() {
+  const features = useFeatures()
   const settings = useDueSettings()
   const [tab, setTab] = useState('open')
   const [adding, setAdding] = useState(false)
@@ -153,7 +155,9 @@ export default function Payments() {
         {settings.data?.ready && (
           <p className="text-xs text-ink-3">
             Payments go to <span className="font-medium text-ink-2">{settings.data.upi_id}</span>.
-            {settings.data.auto_reminders
+            {!features.on('whatsapp_messaging')
+              ? ' Automatic reminders are coming soon. For now, tap Open WhatsApp on a payment to send the reminder yourself.'
+              : settings.data.auto_reminders
               ? settings.data.reminders_mode === 'real'
                 ? ' Automatic reminders are on (on the due date, then after 3 and 7 days).'
                 : ' Automatic reminders are on, in practice mode until WhatsApp is connected for real.'

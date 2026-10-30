@@ -19,6 +19,16 @@ class Settings(BaseSettings):
     # refuses to start with demo passwords/keys, hides /docs, and adds security headers.
     environment: str = "development"
     show_docs: bool = False                    # production only: set true to keep /docs visible
+    # What the live site offers (see app/features.py):
+    #   "light" = only what really works today. A platform (WhatsApp, Instagram, Google, LinkedIn, Razorpay,
+    #             call tracking, competitor data) is offered ONLY once its real keys are in .env: nothing runs in
+    #             pretend mode, so owners are never shown something that doesn't really work.
+    #   "full"  = everything, with pretend (mock) mode wherever keys are missing: for your laptop and the tests.
+    #   ""      = automatic: "light" on the live server (ENVIRONMENT=production), "full" everywhere else.
+    # Where owners pay you by hand while Razorpay is off (shown on the Billing page)
+    pay_upi_id: str = ""
+    pay_note: str = ""            # e.g. bank details, or "WhatsApp us the screenshot"
+    launch_mode: str = ""
     sentry_dsn: str = ""                       # optional: sentry.io error alerts (free plan is enough)
     backup_dir: str = "./data/backups"         # nightly database backups (3am India time)
     backup_keep_days: int = 14
@@ -142,6 +152,22 @@ class Settings(BaseSettings):
     dataforseo_login: str = ""
     dataforseo_password: str = ""
 
+    # Phone call tracking (Task 38): a tracking number per business, calls forwarded to the
+    # owner, missed calls flagged, recordings saved. No single provider is used everywhere in
+    # India; Exotel (exotel.com) is the reference here - paid per number + per minute, no
+    # approval needed. While the credentials below are empty, this runs in free MOCK mode:
+    # a demo number, and "Simulate a call" to try the feature before connecting a real one.
+    calltracking_sid: str = ""
+    calltracking_token: str = ""
+    calltracking_subdomain: str = ""     # e.g. "api" (your Exotel account's API subdomain)
+
+    # LinkedIn company-page posting (Task 40): posts for coaching, real estate, B2B businesses.
+    # Needs Marketing Developer Platform approval from LinkedIn before real use.
+    # While both keys are empty this runs in free MOCK mode.
+    # developers.linkedin.com → Create App → Auth → OAuth 2.0 settings
+    linkedin_client_id: str = ""
+    linkedin_client_secret: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
@@ -161,6 +187,12 @@ class Settings(BaseSettings):
         return self.environment.lower() == "production"
 
     @property
+    def is_light(self) -> bool:
+        """True = the 'only what really works' launch version (see launch_mode above)."""
+        mode = self.launch_mode.strip().lower()
+        return mode == "light" or (mode == "" and self.is_production)
+
+    @property
     def email_enabled(self) -> bool:
         return bool(self.smtp_host)
 
@@ -175,8 +207,16 @@ class Settings(BaseSettings):
         return not self.mock_ai and bool(self.anthropic_api_key)
 
     @property
+    def linkedin_enabled(self) -> bool:
+        return bool(self.linkedin_client_id and self.linkedin_client_secret)
+
+    @property
     def mapsearch_enabled(self) -> bool:
         return bool(self.dataforseo_login and self.dataforseo_password)
+
+    @property
+    def calltracking_enabled(self) -> bool:
+        return bool(self.calltracking_sid and self.calltracking_token and self.calltracking_subdomain)
 
 
 @lru_cache

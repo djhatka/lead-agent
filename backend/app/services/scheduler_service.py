@@ -20,12 +20,13 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import features
 from app.config import settings
 from app.database import SessionLocal
 from app.models import Post, SocialAccount
 from app.services.billing_service import paused_business_ids
 from app.services.event_bus import bus
-from app.services.publishers import PublishError, get_publisher
+from app.services.publishers import ManualPublisher, PublishError, get_publisher
 
 logger = logging.getLogger("scheduler")
 
@@ -73,6 +74,13 @@ def unschedule(db: Session, post: Post) -> Post:
     return post
 
 
+def _posts_by_hand(db: Session, post: Post) -> bool:
+    """True when nothing is connected for this post's platform, so the owner posts it themselves
+    (live site, light mode): we never pretend, and never mark such a post "failed"."""
+    account = db.get(SocialAccount, post.account_id)
+    return account is not None and isinstance(get_publisher(account, db), ManualPublisher)
+
+
 def _publish(db: Session, post: Post) -> bool:
     """Publish one post. Returns True on success; on failure the post is
     marked 'failed' with the reason, so the owner can fix it and reschedule."""
@@ -101,7 +109,26 @@ def publish_now(db: Session, post: Post) -> Post:
         raise ValueError("Already published")
     if post.status == "idea":
         raise ValueError("This is still an idea: write it first")
+    if _posts_by_hand(db, post):
+        raise ValueError(features.MANUAL_POST_MESSAGE)
     _publish(db, post)
+    return post
+
+
+def mark_posted(db: Session, post: Post) -> Post:
+    """The owner posted it themselves (launch version, platform not connected): record it as published."""
+    if post.status == "published":
+        raise ValueError("Already marked as posted")
+    if post.status == "idea" or not post.caption:
+        raise ValueError("Write the post first")
+    if not _posts_by_hand(db, post):
+        raise ValueError("This account is connected, so use Post now and it goes out by itself")
+    post.status = "published"
+    post.published_at = _now()
+    post.publish_error = ""
+    db.commit()
+    bus.publish(post.business_id, "post.published", f"Marked as posted on {post.platform} ✅",
+                post.title or post.caption[:80], {"post_id": post.id})
     return post
 
 
@@ -116,6 +143,8 @@ def publish_due(db: Session, now: Optional[datetime] = None) -> tuple[int, int]:
     paused = paused_business_ids(db) if due else set()
     ok = failed = 0
     for post in due:
+        if post.status == "scheduled" and _posts_by_hand(db, post):
+            continue                              # the owner posts this one themselves: it just stays "scheduled"
         if post.business_id in paused:
             # Plan ended: don't post (a "Diwali offer" going out weeks late would be worse)
             post.status = "failed"
@@ -142,8 +171,11 @@ def refresh_stats(db: Session, business_id: Optional[int] = None, force: bool = 
         if not force and post.stats_updated_at and _utc(post.stats_updated_at) > stale_before:
             continue
         account = db.get(SocialAccount, post.account_id)
+        publisher = get_publisher(account, db)
+        if isinstance(publisher, ManualPublisher):
+            continue                              # posted by hand: there are no numbers to read
         try:
-            numbers = get_publisher(account).fetch_stats(post, account)
+            numbers = publisher.fetch_stats(post, account)
         except PublishError:
             continue
         for field, value in numbers.items():
@@ -161,19 +193,22 @@ def run_cycle(db: Session) -> dict:
     from app.services import (alerts_service, competitor_service, connection_service, dues_service, email_service,
                               followup_service, renewal_service, roi_service)
 
-    published, failed = publish_due(db)
+    # Each job that needs an account we may not have yet (see app/features.py) only runs once it's really on.
+    # On the live "light" site that means: no pretend posting, no pretend WhatsApps, no made-up competitor numbers.
+    # On your laptop (full mode) every job runs, in pretend mode where keys are missing.
+    published, failed = publish_due(db)                         # posts by hand stay "scheduled" (see _posts_by_hand)
     updated = refresh_stats(db)
-    asked = send_due_requests(db)
+    asked = send_due_requests(db) if features.on("whatsapp_messaging") else 0
     reviews = weekly_reviews_due(db) if settings.weekly_review_enabled else 0
-    google_reviews = connection_service.sync_due(db)            # new Google reviews (every 30 min per business)
-    renewed = connection_service.refresh_expiring(db)           # Instagram keys before they run out
+    google_reviews = connection_service.sync_due(db) if features.on("google_reviews") else 0   # new Google reviews (every 30 min per business)
+    renewed = connection_service.refresh_expiring(db) if features.on("connect_apps") else 0    # Instagram keys before they run out
     reminders = email_service.trial_reminders(db)               # "your trial ends in 3 days" (once each)
-    alerts = alerts_service.send_due(db)                        # owner alerts held in quiet hours, or retries
+    alerts = alerts_service.send_due(db) if features.on("whatsapp_messaging") else 0   # owner alerts held in quiet hours, or retries
     roi_reports = roi_service.monthly_reports_due(db)           # on the 1st: last month's "what we did for you"
     followups = followup_service.daily_reminders(db)            # after 10am: "3 enquiries need a follow-up"
-    dues = dues_service.send_due_reminders(db)                  # polite "₹2,000 is due" WhatsApps (10am-8pm)
+    dues = dues_service.send_due_reminders(db) if features.on("whatsapp_messaging") else 0     # polite "₹2,000 is due" WhatsApps (10am-8pm)
     renewal_reminders = renewal_service.daily_reminders(db)    # "Priya's membership ends in 5 days" (after 10am)
-    competitor_checks = competitor_service.weekly_checks_due(db)   # re-check any watched competitor 6+ days stale
+    competitor_checks = competitor_service.weekly_checks_due(db) if features.on("competitors") else 0   # re-check any watched competitor 6+ days stale
     emails = email_service.deliver_pending(db)                  # send queued emails, retry failed ones
     backup = _nightly_backup(db)                                # after 3am India time, once a day
     LAST_RUN.update({"at": _now(), "published": published, "failed": failed, "stats_updated": updated,

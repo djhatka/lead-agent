@@ -29,6 +29,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app import features
 from app.config import settings
 from app.models import Business, Media, Payment, SocialAccount, Subscription, User
 from app.plans import PLANS, TRIAL_PLAN, Plan, cheapest_with, get_plan
@@ -199,9 +200,23 @@ class Checkout(BaseModel):
     business_name: str
 
 
+def payments_are_manual() -> bool:
+    """Live site without Razorpay keys: owners pay you by UPI or bank transfer, and you switch their plan on
+    by hand (activate_manually). The pretend "mock" payment is never allowed there: it would give plans away."""
+    return features.is_light() and not settings.payments_enabled
+
+
+def _manual_payment_message() -> str:
+    contact = settings.support_phone or settings.support_email or "us"
+    return (f"Online payment isn't switched on yet. Pay by UPI or bank transfer (ask {contact} for the details) "
+            f"and we'll activate your plan the same day.")
+
+
 def start_checkout(db: Session, business_id: int, plan_code: str) -> Checkout:
     if plan_code not in PLANS:
         raise BillingError(f"Unknown plan '{plan_code}'")
+    if payments_are_manual():
+        raise BillingError(_manual_payment_message())
     sub = subscription_for(db, business_id)
     now_access = access_for(sub)
     if sub.plan == plan_code and now_access.state == "active":
@@ -239,12 +254,42 @@ def mock_pay(db: Session, business_id: int) -> Access:
     """Mock mode only: act like the owner paid in the Razorpay window."""
     if settings.payments_enabled:
         raise BillingError("Real payments are switched on: use the Razorpay checkout")
+    if payments_are_manual():
+        raise BillingError(_manual_payment_message())
     sub = subscription_for(db, business_id)
     if not sub.pending_gateway_subscription_id:
         raise BillingError("Choose a plan first (POST /billing/subscribe)")
     payment_id = f"pay_mock_{secrets.token_hex(6)}"
     signature = gw.sign(f"{payment_id}|{sub.pending_gateway_subscription_id}", gw.MOCK_KEY_SECRET)
     return confirm_payment(db, business_id, payment_id, sub.pending_gateway_subscription_id, signature)
+
+
+def activate_manually(db: Session, business_id: int, plan_code: str, days: int = 30,
+                      amount: Optional[int] = None) -> Access:
+    """You (the admin) got the owner's UPI / bank payment: switch their plan on for `days` days.
+    Paying again before it ends adds the days on top. Records the payment and emails a receipt."""
+    if plan_code not in PLANS:
+        raise BillingError(f"Unknown plan '{plan_code}'")
+    if not 1 <= days <= 366:
+        raise BillingError("Days must be between 1 and 366")
+    sub = subscription_for(db, business_id)
+    if sub.gateway_subscription_id:
+        raise BillingError("This business pays through Razorpay: change its plan there, not here")
+    now = _now()
+    current_end = _utc(sub.current_period_end)
+    base = current_end if (sub.status == "active" and current_end and current_end > now and sub.plan == plan_code) else now
+    sub.plan, sub.status, sub.cancel_at_period_end = plan_code, "active", False
+    sub.pending_plan = sub.pending_gateway_subscription_id = None
+    sub.current_period_end = base + timedelta(days=days)
+    payment = Payment(business_id=business_id, subscription_id=sub.id, gateway_payment_id=f"manual_{secrets.token_hex(6)}",
+                      plan=plan_code, amount=PLANS[plan_code].price if amount is None else amount)
+    db.add(payment)
+    db.commit()
+    plan = PLANS[plan_code]
+    bus.publish(business_id, "billing.paid", "Payment received ✅",
+                f"{plan.name} plan active until {_day(sub.current_period_end)}", {"plan": plan.code})
+    email_service.send_receipt(db, payment, sub.current_period_end)
+    return access_for(sub)
 
 
 def _paid_already(db: Session, payment_id: Optional[str]) -> bool:

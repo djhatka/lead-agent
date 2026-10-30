@@ -118,7 +118,7 @@ class StartOut(BaseModel):
 
 
 @router.post("/connections/{platform}/start", response_model=StartOut)
-def start(platform: Literal["instagram", "facebook", "google"], business_id: Optional[int] = None,
+def start(platform: Literal["instagram", "facebook", "google", "linkedin"], business_id: Optional[int] = None,
           owner: User = Depends(require_owner), db: Session = Depends(get_db)):
     """Then: window.location = url. The owner approves on the platform and comes back."""
     bid = _business_id(owner, business_id, db)

@@ -22,7 +22,7 @@
         <tr><td>AI-planned and written posts, scheduling</td>{% for p in s.plans %}<td>✓</td>{% endfor %}</tr>
         <tr><td>AI-drafted replies to reviews</td>{% for p in s.plans %}<td>✓</td>{% endfor %}</tr>
         <tr><td>Weekly AI growth review (every Monday)</td>{% for p in s.plans %}<td>{{ "✓" if p.weekly_review else "–" }}</td>{% endfor %}</tr>
-        <tr><td>Automatic "please review us" WhatsApps</td>{% for p in s.plans %}<td>{{ "✓" if p.review_requests else "–" }}</td>{% endfor %}</tr>
+        {% if s.whatsapp %}<tr><td>Automatic "please review us" WhatsApps</td>{% for p in s.plans %}<td>{{ "✓" if p.review_requests else "–" }}</td>{% endfor %}</tr>{% endif %}
         <tr><td>Staff logins</td>{% for p in s.plans %}<td>{{ p.staff_seats }}</td>{% endfor %}</tr>
         <tr><td>Social accounts</td>{% for p in s.plans %}<td>{{ p.social_accounts }}</td>{% endfor %}</tr>
         <tr><td>Photo and video storage</td>{% for p in s.plans %}<td>{{ p.storage_mb // 1024 }} GB</td>{% endfor %}</tr>

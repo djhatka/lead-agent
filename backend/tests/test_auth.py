@@ -16,7 +16,7 @@ from app.models import AuthSession, Lead, User
 from app.services import auth_service
 
 PUBLIC = ("/health", "/auth/signup", "/auth/login", "/auth/forgot-password", "/auth/reset-password", "/platforms",
-          "/billing/plans", "/webhooks", "/docs", "/openapi",
+          "/features", "/billing/plans", "/webhooks", "/docs", "/openapi",
           "/redoc")
 
 

@@ -5,10 +5,11 @@ Subscription and payment endpoints.
     GET  /billing/status         my plan, trial days left, limits used, what to show
     POST /billing/subscribe      owner picks a plan → details to open Razorpay checkout
     POST /billing/verify         the browser passes back what Razorpay gave it → plan active
-    POST /billing/mock-pay       MOCK MODE ONLY: pretend the owner paid
+    POST /billing/mock-pay       MOCK MODE ONLY: pretend the owner paid (never on the live "light" site)
     POST /billing/cancel         stop renewing (works until the paid days run out)
     GET  /billing/payments       payment history
     GET  /admin/billing          (admin) how much the website earns
+    POST /admin/billing/activate (admin) the owner paid by UPI / bank transfer: switch their plan on
     POST /webhooks/razorpay      Razorpay's doorbell: renewals / failures / cancellations
 
 Billing is reachable even when the plan has ended: that's how they pay again.
@@ -22,6 +23,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.auth.access import get_current_user, require_admin, require_owner
+from app import features
 from app.config import settings
 from app.database import get_db
 from app.models import User
@@ -71,7 +73,7 @@ class PlanOut(BaseModel):
 
 @public.get("/billing/plans", response_model=list[PlanOut])
 def plans():
-    return [PlanOut(**{**p.__dict__, "highlights": list(p.highlights)},
+    return [PlanOut(**{**p.__dict__, "highlights": features.highlights(p)},
                     free_trial_days=settings.trial_days if p.code == TRIAL_PLAN else 0) for p in PLANS.values()]
 
 
@@ -98,7 +100,10 @@ async def razorpay_webhook(request: Request, background: BackgroundTasks, x_razo
 class BillingStatus(billing.Access):
     limits: dict[str, int | bool]
     used: dict[str, int]
-    payments_mode: str            # "mock" or "real"
+    pay_upi_id: str = ""          # manual mode: where to pay (PAY_UPI_ID in .env)
+    pay_note: str = ""
+    pay_contact: str = ""
+    payments_mode: str            # "real" (Razorpay), "mock" (pretend, laptop only) or "manual" (they pay you by UPI)
 
 
 @router.get("/billing/status", response_model=BillingStatus)
@@ -106,7 +111,9 @@ def status(business_id: Optional[int] = None, user: User = Depends(get_current_u
     bid = _business_id(user, business_id, db)
     info = billing.access(db, bid)
     plan = PLANS[info.plan]
-    return BillingStatus(**info.model_dump(), payments_mode="real" if settings.payments_enabled else "mock",
+    mode = "real" if settings.payments_enabled else ("manual" if billing.payments_are_manual() else "mock")
+    return BillingStatus(**info.model_dump(), payments_mode=mode, pay_upi_id=settings.pay_upi_id,
+                         pay_note=settings.pay_note, pay_contact=settings.support_phone or settings.support_email,
                          used=billing.usage(db, bid),
                          limits={"staff_seats": plan.staff_seats, "social_accounts": plan.social_accounts,
                                  "storage_mb": plan.storage_mb,
@@ -170,6 +177,21 @@ class PaymentOut(BaseModel):
 def payment_history(business_id: Optional[int] = None, user: User = Depends(get_current_user),
                     db: Session = Depends(get_db)):
     return billing.payments(db, _business_id(user, business_id, db))
+
+
+class ActivateIn(BaseModel):
+    business_id: int
+    plan: Literal[PLAN_CODES]  # type: ignore[valid-type]
+    days: int = Field(default=30, ge=1, le=366)
+    amount: Optional[int] = Field(default=None, ge=0, description="₹ received; leave out for the plan's price")
+
+
+@router.post("/admin/billing/activate", response_model=billing.Access)
+def admin_activate(body: ActivateIn, _admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """(admin) The owner paid you by UPI or bank transfer: switch their plan on for `days` days.
+    Paying again before it ends adds the days on top. A receipt is emailed to the owner."""
+    business_or_404(body.business_id, db)
+    return _try(billing.activate_manually, db, body.business_id, body.plan, body.days, body.amount)
 
 
 @router.get("/admin/billing", response_model=billing.PlatformBilling)

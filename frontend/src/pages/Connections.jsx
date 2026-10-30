@@ -28,6 +28,7 @@ import { Card } from '@/components/ui/Card'
 import { ConfirmButton } from '@/components/ui/ConfirmButton'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { InlineError } from '@/components/ui/States'
+import { useFeatures } from '@/hooks/useFeatures'
 import { toast } from '@/components/ui/toast'
 import { useBusiness } from '@/hooks/useBusiness'
 import { whatsappSignup } from '@/lib/whatsappSignup'
@@ -167,7 +168,29 @@ function AppCard({ app, connection, mode, isOwner, businessId, setup }) {
   )
 }
 
+function ComingSoon() {
+  return (
+    <div>
+      <PageHeader />
+      <Card className="mx-auto mt-4 max-w-xl p-6 text-center">
+        <Plug className="mx-auto mb-3 size-8 text-ink-3" aria-hidden="true" />
+        <h2 className="text-lg font-semibold text-ink">Connecting your apps is coming soon</h2>
+        <p className="mt-2 text-sm text-ink-2">
+          Linking Instagram, Facebook, WhatsApp and Google needs approval from those companies, and we have applied. Until then you can still
+          bring enquiries in by forwarding Justdial, Practo or IndiaMART lead emails, using your website form, or importing a list. Posts
+          are posted by you: copy the caption, post it, then tap "Mark as posted".
+        </p>
+      </Card>
+    </div>
+  )
+}
+
 export default function Connections() {
+  const features = useFeatures()
+  return features.on('connect_apps') ? <ConnectionsPage /> : <ComingSoon />
+}
+
+function ConnectionsPage() {
   const { business } = useBusiness()
   const businessId = business?.id
   const [params, setParams] = useSearchParams()

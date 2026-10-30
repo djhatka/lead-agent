@@ -51,6 +51,7 @@ EVENT_TYPES = {
     "renewal.due": "Renewals are coming up: memberships or services expiring soon",
     "competitor.moved": "A watched competitor's rating or reviews moved",
     "booking.confirmed": "A customer picked a time slot for their booking",
+    "call.missed": "A missed call on the tracking number: waiting for a call-back",
     "test": "A test event",
 }
 
